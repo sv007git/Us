@@ -1,0 +1,92 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --color-bg-primary: #fff1f2;
+    --color-surface: #ffffff;
+    --color-accent: #f43f5e;
+    --color-accent-light: #ffe4e6;
+    --color-accent-dark: #be123c;
+    --color-text-main: #1f2937;
+    --color-text-muted: #6b7280;
+    --color-border: #fecdd3;
+  }
+
+  .dark {
+    --color-bg-primary: #0c080f;
+    --color-surface: #17111e;
+    --color-accent: #fb7185;
+    --color-accent-light: #2c1a27;
+    --color-accent-dark: #f43f5e;
+    --color-text-main: #f9fafb;
+    --color-text-muted: #9ca3af;
+    --color-border: #3b2034;
+  }
+
+  /* Smooth scrolling and native feel */
+  html, body {
+    height: 100%;
+    margin: 0;
+    padding: 0;
+    overflow-x: hidden;
+    -webkit-tap-highlight-color: transparent;
+    font-feature-settings: 'cv02', 'cv03', 'cv04', 'cv11';
+  }
+
+  /* Safe area padding for iPhones and modern devices */
+  .safe-top {
+    padding-top: env(safe-area-inset-top, 0px);
+  }
+  .safe-bottom {
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+}
+
+/* Custom romantic scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(244, 63, 94, 0.25);
+  border-radius: 9999px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(244, 63, 94, 0.5);
+}
+
+/* Glassmorphism utility */
+.glass {
+  background: rgba(255, 255, 255, 0.75);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(254, 205, 211, 0.5);
+}
+
+.dark .glass {
+  background: rgba(26, 17, 32, 0.85);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(251, 113, 133, 0.15);
+}
+
+/* Delicate floating heart effect */
+@keyframes heartFloat {
+  0% {
+    transform: translateY(0) scale(0.8);
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(-80px) scale(1.2);
+    opacity: 0;
+  }
+}
+
+.animate-heart-float {
+  animation: heartFloat 2s ease-out forwards;
+}

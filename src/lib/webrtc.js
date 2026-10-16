@@ -1,0 +1,459 @@
+import { supabase } from './supabaseClient'
+
+/**
+ * Returns RTCConfiguration with STUN and optional TURN servers
+ */
+export const getIceServers = () => {
+  const defaultServers = [
+    { urls: 'stun:stun.l.google.com:19302' },
+    { urls: 'stun:stun1.l.google.com:19302' },
+    { urls: 'stun:stun2.l.google.com:19302' },
+  ]
+
+  // Check custom TURN config in localStorage first, then env
+  let turnConfig = null
+  if (typeof localStorage !== 'undefined') {
+    try {
+      const saved = localStorage.getItem('just_you_me_turn_config')
+      if (saved) turnConfig = JSON.parse(saved)
+    } catch (e) {
+      console.warn('Failed parsing saved TURN config', e)
+    }
+  }
+
+  if (!turnConfig && import.meta.env.VITE_TURN_SERVER_URLS) {
+    turnConfig = {
+      urls: import.meta.env.VITE_TURN_SERVER_URLS.split(',').map(u => u.trim()),
+      username: import.meta.env.VITE_TURN_USERNAME || '',
+      credential: import.meta.env.VITE_TURN_CREDENTIAL || '',
+    }
+  }
+
+  if (turnConfig && turnConfig.urls) {
+    const turnEntry = {
+      urls: Array.isArray(turnConfig.urls) ? turnConfig.urls : [turnConfig.urls],
+    }
+    if (turnConfig.username) turnEntry.username = turnConfig.username
+    if (turnConfig.credential) turnEntry.credential = turnConfig.credential
+    defaultServers.push(turnEntry)
+  }
+
+  return {
+    iceServers: defaultServers,
+    iceCandidatePoolSize: 10,
+  }
+}
+
+/**
+ * WebRTC Calling Manager for 1-to-1 couple calls
+ */
+export class WebRtcCallManager {
+  constructor({ coupleSpaceId, currentUserId, onRemoteStream, onCallStateChange, onError }) {
+    this.coupleSpaceId = coupleSpaceId
+    this.currentUserId = currentUserId
+    this.onRemoteStream = onRemoteStream || (() => {})
+    this.onCallStateChange = onCallStateChange || (() => {})
+    this.onError = onError || (() => {})
+
+    this.peerConnection = null
+    this.localStream = null
+    this.remoteStream = null
+    this.signalingChannel = null
+    this.facingMode = 'user' // 'user' or 'environment'
+    this.isVideoCall = true
+    this.pendingIceCandidates = []
+    this.callState = 'idle' // idle, outgoing, incoming, connecting, connected, ended
+  }
+
+  setCallState(newState, metadata = {}) {
+    this.callState = newState
+    this.onCallStateChange(newState, metadata)
+  }
+
+  /**
+   * Initializes Supabase Realtime broadcast channel for signaling
+   */
+  initSignaling(onIncomingCall) {
+    if (!supabase || !this.coupleSpaceId) return
+
+    this.signalingChannel = supabase.channel(`call_signaling_${this.coupleSpaceId}`, {
+      config: { broadcast: { self: false } },
+    })
+
+    this.signalingChannel
+      .on('broadcast', { event: 'call-offer' }, async ({ payload }) => {
+        if (payload.callerId === this.currentUserId) return
+        if (this.callState !== 'idle') {
+          // Send busy message
+          this.signalingChannel.send({
+            type: 'broadcast',
+            event: 'call-busy',
+            payload: { calleeId: this.currentUserId, callerId: payload.callerId },
+          })
+          return
+        }
+
+        this.isVideoCall = payload.isVideo
+        this.setCallState('incoming', payload)
+        if (onIncomingCall) {
+          onIncomingCall(payload)
+        }
+      })
+      .on('broadcast', { event: 'call-answer' }, async ({ payload }) => {
+        if (payload.calleeId === this.currentUserId) return
+        if (this.peerConnection && this.callState === 'outgoing') {
+          try {
+            await this.peerConnection.setRemoteDescription(new RTCSessionDescription(payload.sdp))
+            this.setCallState('connecting')
+            this.processPendingCandidates()
+          } catch (e) {
+            console.error('Error handling answer:', e)
+            this.onError('Failed to establish peer connection: ' + e.message)
+          }
+        }
+      })
+      .on('broadcast', { event: 'ice-candidate' }, async ({ payload }) => {
+        if (payload.senderId === this.currentUserId) return
+        if (payload.candidate) {
+          const candidate = new RTCIceCandidate(payload.candidate)
+          if (this.peerConnection && this.peerConnection.remoteDescription) {
+            try {
+              await this.peerConnection.addIceCandidate(candidate)
+            } catch (e) {
+              console.warn('Error adding ICE candidate:', e)
+            }
+          } else {
+            this.pendingIceCandidates.push(candidate)
+          }
+        }
+      })
+      .on('broadcast', { event: 'call-reject' }, ({ payload }) => {
+        if (payload.callerId === this.currentUserId) {
+          this.setCallState('ended', { reason: 'declined' })
+          this.cleanup()
+        }
+      })
+      .on('broadcast', { event: 'call-busy' }, ({ payload }) => {
+        if (payload.callerId === this.currentUserId) {
+          this.setCallState('ended', { reason: 'busy' })
+          this.cleanup()
+        }
+      })
+      .on('broadcast', { event: 'call-end' }, () => {
+        this.setCallState('ended', { reason: 'hungup' })
+        this.cleanup()
+      })
+      .subscribe((status) => {
+        console.log('Call signaling status:', status)
+      })
+  }
+
+  async processPendingCandidates() {
+    if (!this.peerConnection || !this.peerConnection.remoteDescription) return
+    while (this.pendingIceCandidates.length > 0) {
+      const candidate = this.pendingIceCandidates.shift()
+      try {
+        await this.peerConnection.addIceCandidate(candidate)
+      } catch (e) {
+        console.warn('Error adding queued ICE candidate:', e)
+      }
+    }
+  }
+
+  /**
+   * Acquires local camera/microphone stream
+   */
+  async acquireMedia({ isVideo = true, facingMode = 'user' }) {
+    this.isVideoCall = isVideo
+    this.facingMode = facingMode
+
+    const constraints = {
+      audio: {
+        echoCancellation: true,
+        noiseSuppression: true,
+        autoGainControl: true,
+      },
+      video: isVideo
+        ? {
+            facingMode,
+            width: { ideal: 1280 },
+            height: { ideal: 720 },
+          }
+        : false,
+    }
+
+    try {
+      this.localStream = await navigator.mediaDevices.getUserMedia(constraints)
+      return this.localStream
+    } catch (err) {
+      console.error('Media acquisition error:', err)
+      if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
+        throw new Error('Microphone or Camera access was denied. Please allow permissions in browser settings.')
+      } else if (err.name === 'NotFoundError' || err.name === 'DevicesNotFoundError') {
+        throw new Error('No camera or microphone found on your device.')
+      }
+      throw err
+    }
+  }
+
+  /**
+   * Initializes RTCPeerConnection and attaches local tracks
+   */
+  createPeerConnection() {
+    this.peerConnection = new RTCPeerConnection(getIceServers())
+
+    // Remote track listener
+    this.peerConnection.ontrack = (event) => {
+      if (event.streams && event.streams[0]) {
+        this.remoteStream = event.streams[0]
+        this.onRemoteStream(this.remoteStream)
+      }
+    }
+
+    // ICE candidate generation
+    this.peerConnection.onicecandidate = (event) => {
+      if (event.candidate && this.signalingChannel) {
+        this.signalingChannel.send({
+          type: 'broadcast',
+          event: 'ice-candidate',
+          payload: {
+            candidate: event.candidate,
+            senderId: this.currentUserId,
+          },
+        })
+      }
+    }
+
+    // Connection state changes
+    this.peerConnection.onconnectionstatechange = () => {
+      const state = this.peerConnection?.connectionState
+      console.log('Peer connection state:', state)
+      if (state === 'connected') {
+        this.setCallState('connected')
+      } else if (state === 'disconnected' || state === 'failed') {
+        console.warn('WebRTC disconnected/failed, attempting ICE restart...')
+        this.restartIce()
+      } else if (state === 'closed') {
+        this.setCallState('ended')
+      }
+    }
+
+    // Attach local stream tracks to connection
+    if (this.localStream) {
+      this.localStream.getTracks().forEach((track) => {
+        this.peerConnection.addTrack(track, this.localStream)
+      })
+    }
+  }
+
+  /**
+   * Initiates an outgoing call
+   */
+  async startCall({ isVideo = true, callerName = 'Partner' }) {
+    try {
+      await this.acquireMedia({ isVideo })
+      this.createPeerConnection()
+      this.setCallState('outgoing')
+
+      const offer = await this.peerConnection.createOffer({
+        offerToReceiveAudio: true,
+        offerToReceiveVideo: isVideo,
+      })
+      await this.peerConnection.setLocalDescription(offer)
+
+      this.signalingChannel.send({
+        type: 'broadcast',
+        event: 'call-offer',
+        payload: {
+          sdp: offer,
+          isVideo,
+          callerId: this.currentUserId,
+          callerName,
+        },
+      })
+    } catch (err) {
+      this.cleanup()
+      this.onError(err.message || 'Could not start call')
+      throw err
+    }
+  }
+
+  /**
+   * Answers an incoming call
+   */
+  async answerCall(incomingOffer) {
+    try {
+      await this.acquireMedia({ isVideo: incomingOffer.isVideo })
+      this.createPeerConnection()
+      this.setCallState('connecting')
+
+      await this.peerConnection.setRemoteDescription(new RTCSessionDescription(incomingOffer.sdp))
+      this.processPendingCandidates()
+
+      const answer = await this.peerConnection.createAnswer()
+      await this.peerConnection.setLocalDescription(answer)
+
+      this.signalingChannel.send({
+        type: 'broadcast',
+        event: 'call-answer',
+        payload: {
+          sdp: answer,
+          calleeId: this.currentUserId,
+          callerId: incomingOffer.callerId,
+        },
+      })
+    } catch (err) {
+      this.cleanup()
+      this.onError(err.message || 'Could not answer call')
+      throw err
+    }
+  }
+
+  /**
+   * Rejects an incoming call
+   */
+  rejectCall(callerId) {
+    if (this.signalingChannel) {
+      this.signalingChannel.send({
+        type: 'broadcast',
+        event: 'call-reject',
+        payload: { callerId, calleeId: this.currentUserId },
+      })
+    }
+    this.cleanup()
+    this.setCallState('idle')
+  }
+
+  /**
+   * Ends an active or pending call
+   */
+  endCall() {
+    if (this.signalingChannel) {
+      this.signalingChannel.send({
+        type: 'broadcast',
+        event: 'call-end',
+        payload: { senderId: this.currentUserId },
+      })
+    }
+    this.cleanup()
+    this.setCallState('ended')
+  }
+
+  /**
+   * Toggles microphone audio on/off
+   */
+  toggleMicrophone(enabled) {
+    if (!this.localStream) return false
+    const audioTrack = this.localStream.getAudioTracks()[0]
+    if (audioTrack) {
+      audioTrack.enabled = enabled !== undefined ? enabled : !audioTrack.enabled
+      return audioTrack.enabled
+    }
+    return false
+  }
+
+  /**
+   * Toggles camera video on/off
+   */
+  toggleCamera(enabled) {
+    if (!this.localStream) return false
+    const videoTrack = this.localStream.getVideoTracks()[0]
+    if (videoTrack) {
+      videoTrack.enabled = enabled !== undefined ? enabled : !videoTrack.enabled
+      return videoTrack.enabled
+    }
+    return false
+  }
+
+  /**
+   * Flips between front (user) and rear (environment) camera on mobile
+   */
+  async switchCamera() {
+    if (!this.localStream || !this.isVideoCall) return
+
+    const newFacingMode = this.facingMode === 'user' ? 'environment' : 'user'
+    try {
+      const newStream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: newFacingMode, width: { ideal: 1280 }, height: { ideal: 720 } },
+      })
+      const newVideoTrack = newStream.getVideoTracks()[0]
+
+      const sender = this.peerConnection?.getSenders().find((s) => s.track && s.track.kind === 'video')
+      if (sender) {
+        await sender.replaceTrack(newVideoTrack)
+      }
+
+      // Stop old video track
+      const oldTrack = this.localStream.getVideoTracks()[0]
+      if (oldTrack) oldTrack.stop()
+
+      this.localStream.removeTrack(oldTrack)
+      this.localStream.addTrack(newVideoTrack)
+      this.facingMode = newFacingMode
+
+      return newFacingMode
+    } catch (err) {
+      console.warn('Switch camera error:', err)
+      throw err
+    }
+  }
+
+  /**
+   * Attempts ICE restart if connection was interrupted (e.g. mobile cell to wifi switch)
+   */
+  async restartIce() {
+    if (!this.peerConnection) return
+    try {
+      const offer = await this.peerConnection.createOffer({ iceRestart: true })
+      await this.peerConnection.setLocalDescription(offer)
+      this.signalingChannel?.send({
+        type: 'broadcast',
+        event: 'call-offer',
+        payload: {
+          sdp: offer,
+          isVideo: this.isVideoCall,
+          callerId: this.currentUserId,
+          isIceRestart: true,
+        },
+      })
+    } catch (e) {
+      console.error('ICE restart failed:', e)
+    }
+  }
+
+  /**
+   * Releases camera, microphone, and WebRTC peer connection resources cleanly
+   */
+  cleanup() {
+    if (this.localStream) {
+      this.localStream.getTracks().forEach((track) => {
+        try {
+          track.stop()
+        } catch (e) {
+          // ignore
+        }
+      })
+      this.localStream = null
+    }
+
+    if (this.peerConnection) {
+      try {
+        this.peerConnection.close()
+      } catch (e) {
+        // ignore
+      }
+      this.peerConnection = null
+    }
+
+    this.remoteStream = null
+    this.pendingIceCandidates = []
+  }
+
+  destroy() {
+    this.cleanup()
+    if (this.signalingChannel) {
+      this.signalingChannel.unsubscribe()
+      this.signalingChannel = null
+    }
+  }
+}
