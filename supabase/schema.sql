@@ -315,27 +315,56 @@ CREATE OR REPLACE FUNCTION public.delete_user_account()
 RETURNS jsonb AS $$
 DECLARE
     v_user_id UUID := auth.uid();
+    v_space_id UUID;
+    v_other_members INT;
 BEGIN
     IF v_user_id IS NULL THEN
-        RAISE EXCEPTION 'Not authenticated.' USING ERRCODE = 'invalid_parameter_value';
+        RAISE EXCEPTION 'Not authenticated.' USING ERRCODE = 'insufficient_privilege';
     END IF;
 
-    -- Delete user couple membership
-    DELETE FROM public.couple_members WHERE user_id = v_user_id;
+    -- 1. Find the couple space the user belongs to
+    SELECT couple_space_id INTO v_space_id
+    FROM public.couple_members
+    WHERE user_id = v_user_id
+    LIMIT 1;
 
-    -- Delete user profile
+    -- 2. If user belongs to a couple space, check whether other members exist
+    IF v_space_id IS NOT NULL THEN
+        SELECT COUNT(*) INTO v_other_members
+        FROM public.couple_members
+        WHERE couple_space_id = v_space_id AND user_id != v_user_id;
+
+        -- If user is the only member or wiping the space, delete the space
+        -- (Cascades to all messages, memories, love notes, invitations, watch sessions)
+        IF v_other_members = 0 THEN
+            DELETE FROM public.couple_spaces WHERE id = v_space_id;
+        ELSE
+            -- If partner remains, remove this user from membership
+            DELETE FROM public.couple_members WHERE user_id = v_user_id;
+        END IF;
+    END IF;
+
+    -- 3. Delete any spaces created by this user
+    DELETE FROM public.couple_spaces WHERE created_by = v_user_id;
+
+    -- 4. Delete user profile
     DELETE FROM public.profiles WHERE id = v_user_id;
 
-    -- Delete from auth.users (if privileges allow)
+    -- 5. Delete storage objects owned by this user
     BEGIN
-        DELETE FROM auth.users WHERE id = v_user_id;
+        DELETE FROM storage.objects WHERE owner = v_user_id;
     EXCEPTION WHEN OTHERS THEN
-        -- If execution context prevents direct auth.users drop, profile and space membership are already cleaned up
+        NULL;
     END;
+
+    -- 6. Permanently delete from auth.users (frees the email address for new registration)
+    DELETE FROM auth.users WHERE id = v_user_id;
 
     RETURN jsonb_build_object('success', true);
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
+
+GRANT EXECUTE ON FUNCTION public.delete_user_account() TO authenticated;
 
 -- ===================================================================
 -- Row Level Security (RLS) Enablement & Policies
@@ -369,6 +398,12 @@ CREATE POLICY "Users can update their own profile"
     USING (auth.uid() = id)
     WITH CHECK (auth.uid() = id);
 
+DROP POLICY IF EXISTS "Users can delete their own profile" ON public.profiles;
+CREATE POLICY "Users can delete their own profile"
+    ON public.profiles FOR DELETE
+    TO authenticated
+    USING (auth.uid() = id);
+
 -- 2. Couple Spaces Policies
 -- Creator can read their space, and members of that space can read it
 DROP POLICY IF EXISTS "Couple spaces viewable by members" ON public.couple_spaces;
@@ -389,6 +424,15 @@ CREATE POLICY "Couple spaces updatable by members or creator"
     USING (created_by = auth.uid() OR public.is_couple_member(auth.uid(), id))
     WITH CHECK (created_by = auth.uid() OR public.is_couple_member(auth.uid(), id));
 
+DROP POLICY IF EXISTS "Users can delete their couple space" ON public.couple_spaces;
+CREATE POLICY "Users can delete their couple space"
+    ON public.couple_spaces FOR DELETE
+    TO authenticated
+    USING (
+        created_by = auth.uid() 
+        OR public.is_couple_member(auth.uid(), id)
+    );
+
 -- 3. Couple Members Policies
 DROP POLICY IF EXISTS "Couple members viewable by members of that space" ON public.couple_members;
 CREATE POLICY "Couple members viewable by members of that space"
@@ -400,6 +444,19 @@ CREATE POLICY "Users can insert membership for themselves during creation"
     ON public.couple_members FOR INSERT
     WITH CHECK (auth.uid() = user_id);
 
+DROP POLICY IF EXISTS "Users can delete couple members" ON public.couple_members;
+CREATE POLICY "Users can delete couple members"
+    ON public.couple_members FOR DELETE
+    TO authenticated
+    USING (
+        user_id = auth.uid() 
+        OR public.is_couple_member(auth.uid(), couple_space_id)
+        OR EXISTS (
+            SELECT 1 FROM public.couple_spaces 
+            WHERE id = couple_members.couple_space_id AND created_by = auth.uid()
+        )
+    );
+
 -- 4. Invitations Policies
 DROP POLICY IF EXISTS "Invitations viewable by creator or members of the space" ON public.invitations;
 CREATE POLICY "Invitations viewable by creator or members of the space"
@@ -410,6 +467,15 @@ DROP POLICY IF EXISTS "Space members can create invitations" ON public.invitatio
 CREATE POLICY "Space members can create invitations"
     ON public.invitations FOR INSERT
     WITH CHECK (created_by = auth.uid());
+
+DROP POLICY IF EXISTS "Invitations deletable by creator or space members" ON public.invitations;
+CREATE POLICY "Invitations deletable by creator or space members"
+    ON public.invitations FOR DELETE
+    TO authenticated
+    USING (
+        created_by = auth.uid() 
+        OR public.is_couple_member(auth.uid(), couple_space_id)
+    );
 
 -- 5. Messages Policies
 DROP POLICY IF EXISTS "Messages viewable only by couple members" ON public.messages;
@@ -432,9 +498,14 @@ CREATE POLICY "Messages updatable by original sender"
     WITH CHECK (auth.uid() = sender_id);
 
 DROP POLICY IF EXISTS "Messages deletable by original sender" ON public.messages;
-CREATE POLICY "Messages deletable by original sender"
+DROP POLICY IF EXISTS "Messages deletable by space members or sender" ON public.messages;
+CREATE POLICY "Messages deletable by space members or sender"
     ON public.messages FOR DELETE
-    USING (auth.uid() = sender_id);
+    TO authenticated
+    USING (
+        sender_id = auth.uid() 
+        OR public.is_couple_member(auth.uid(), couple_space_id)
+    );
 
 -- 6. Memories Policies
 DROP POLICY IF EXISTS "Memories viewable only by couple members" ON public.memories;
@@ -453,9 +524,14 @@ CREATE POLICY "Memories updatable by couple members"
     USING (public.is_couple_member(auth.uid(), couple_space_id));
 
 DROP POLICY IF EXISTS "Memories deletable by creator" ON public.memories;
-CREATE POLICY "Memories deletable by creator"
+DROP POLICY IF EXISTS "Memories deletable by space members or creator" ON public.memories;
+CREATE POLICY "Memories deletable by space members or creator"
     ON public.memories FOR DELETE
-    USING (auth.uid() = created_by);
+    TO authenticated
+    USING (
+        created_by = auth.uid() 
+        OR public.is_couple_member(auth.uid(), couple_space_id)
+    );
 
 -- 7. Love Notes Policies
 DROP POLICY IF EXISTS "Love notes viewable only by couple members" ON public.love_notes;
@@ -476,7 +552,11 @@ CREATE POLICY "Love notes updatable by couple members"
 DROP POLICY IF EXISTS "Love notes deletable by author or couple members" ON public.love_notes;
 CREATE POLICY "Love notes deletable by author or couple members"
     ON public.love_notes FOR DELETE
-    USING (public.is_couple_member(auth.uid(), couple_space_id));
+    TO authenticated
+    USING (
+        author_id = auth.uid() 
+        OR public.is_couple_member(auth.uid(), couple_space_id)
+    );
 
 -- 8. Watch Sessions Policies
 DROP POLICY IF EXISTS "Watch sessions viewable only by couple members" ON public.watch_sessions;
@@ -494,6 +574,18 @@ CREATE POLICY "Watch sessions updatable by couple members"
     ON public.watch_sessions FOR UPDATE
     USING (public.is_couple_member(auth.uid(), couple_space_id))
     WITH CHECK (public.is_couple_member(auth.uid(), couple_space_id));
+
+DROP POLICY IF EXISTS "Watch sessions deletable by space members" ON public.watch_sessions;
+CREATE POLICY "Watch sessions deletable by space members"
+    ON public.watch_sessions FOR DELETE
+    TO authenticated
+    USING (
+        public.is_couple_member(auth.uid(), couple_space_id)
+        OR EXISTS (
+            SELECT 1 FROM public.couple_spaces 
+            WHERE id = watch_sessions.couple_space_id AND created_by = auth.uid()
+        )
+    );
 
 -- ===================================================================
 -- Performance Indexes

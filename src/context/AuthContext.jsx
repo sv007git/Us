@@ -97,6 +97,11 @@ export const AuthProvider = ({ children }) => {
         throw error
       }
 
+      // Supabase returns identities: [] when the user already exists in auth.users
+      if (data?.user && Array.isArray(data.user.identities) && data.user.identities.length === 0 && !data?.session) {
+        throw new Error('An account with this email already exists. Please switch to "Sign In" with your password.')
+      }
+
       if (data?.user) {
         // Upsert profile
         await supabase.from('profiles').upsert({
@@ -190,23 +195,83 @@ export const AuthProvider = ({ children }) => {
     if (!supabase || !user) throw new Error('Not authenticated')
     setAuthError(null)
     try {
-      // 1. Try atomic database deletion procedure
+      const currentUserId = user.id
+
+      // 1. Find user's couple membership & space ID before deleting
+      let spaceId = null
+      try {
+        const { data: memberData } = await supabase
+          .from('couple_members')
+          .select('couple_space_id')
+          .eq('user_id', currentUserId)
+          .maybeSingle()
+        if (memberData?.couple_space_id) {
+          spaceId = memberData.couple_space_id
+        }
+      } catch (e) {
+        console.warn('Error fetching membership during deletion:', e)
+      }
+
+      // 2. Try the server-side atomic deletion RPC
+      let rpcSucceeded = false
       try {
         const { error: rpcError } = await supabase.rpc('delete_user_account')
         if (!rpcError) {
-          await signOut()
-          return { success: true }
+          rpcSucceeded = true
+        } else {
+          console.warn('RPC delete_user_account returned error, falling back to direct table wipe:', rpcError)
         }
       } catch (e) {
-        console.warn('RPC delete_user_account fallback:', e)
+        console.warn('RPC delete_user_account call failed:', e)
       }
 
-      // 2. Direct cascading table deletion fallback
-      await supabase.from('couple_members').delete().eq('user_id', user.id)
-      await supabase.from('profiles').delete().eq('id', user.id)
+      // 3. Fallback direct table wipe (wipes all couple data, messages, notes, and profile)
+      if (!rpcSucceeded) {
+        if (spaceId) {
+          await Promise.allSettled([
+            supabase.from('messages').delete().eq('couple_space_id', spaceId),
+            supabase.from('memories').delete().eq('couple_space_id', spaceId),
+            supabase.from('love_notes').delete().eq('couple_space_id', spaceId),
+            supabase.from('watch_sessions').delete().eq('couple_space_id', spaceId),
+            supabase.from('invitations').delete().eq('couple_space_id', spaceId),
+          ])
 
-      await signOut()
-      return { success: true }
+          await supabase.from('couple_members').delete().eq('couple_space_id', spaceId)
+          await supabase.from('couple_spaces').delete().eq('id', spaceId)
+        }
+
+        await Promise.allSettled([
+          supabase.from('couple_members').delete().eq('user_id', currentUserId),
+          supabase.from('couple_spaces').delete().eq('created_by', currentUserId),
+          supabase.from('profiles').delete().eq('id', currentUserId),
+        ])
+      }
+
+      // 4. Wipe local storage auth tokens & cached states
+      try {
+        if (typeof localStorage !== 'undefined') {
+          localStorage.removeItem('just_you_me_auth_token')
+          localStorage.removeItem('just_you_me_turn_config')
+        }
+        if (typeof sessionStorage !== 'undefined') {
+          sessionStorage.clear()
+        }
+      } catch (e) {
+        console.warn('Storage cleanup error:', e)
+      }
+
+      // 5. Sign out of Supabase Auth
+      try {
+        await supabase.auth.signOut({ scope: 'local' })
+      } catch (e) {
+        await signOut()
+      }
+
+      setUser(null)
+      setSession(null)
+      setProfile(null)
+
+      return { success: true, rpcExecuted: rpcSucceeded }
     } catch (err) {
       console.error('Delete account error:', err)
       const handled = handleAuthError(err)
