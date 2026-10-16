@@ -75,6 +75,9 @@ export const WatchRoom = () => {
       .then(({ data }) => {
         if (data?.video_url) {
           setVideoUrl(data.video_url)
+          if (data.playback_position && videoRef.current) {
+            videoRef.current.currentTime = parseFloat(data.playback_position)
+          }
         }
       })
 

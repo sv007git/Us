@@ -128,12 +128,13 @@ CREATE TABLE IF NOT EXISTS public.love_notes (
 
 -- 10. Watch Together State Table
 -- Tracks synchronized video player state between partners.
+-- (Uses playback_position instead of reserved keyword current_time)
 CREATE TABLE IF NOT EXISTS public.watch_sessions (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     couple_space_id UUID NOT NULL UNIQUE REFERENCES public.couple_spaces(id) ON DELETE CASCADE,
     video_url TEXT NOT NULL,
     video_title TEXT DEFAULT 'Movie Night',
-    current_time NUMERIC(10, 3) DEFAULT 0,
+    playback_position NUMERIC(10, 3) DEFAULT 0,
     is_playing BOOLEAN DEFAULT FALSE,
     playback_rate NUMERIC(3, 2) DEFAULT 1.0,
     last_updated_by UUID REFERENCES auth.users(id) ON DELETE SET NULL,
@@ -273,7 +274,7 @@ ALTER TABLE public.love_notes ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.watch_sessions ENABLE ROW LEVEL SECURITY;
 
 -- 1. Profiles Policies
--- Users can read their own profile and their partner's profile
+DROP POLICY IF EXISTS "Profiles are viewable by authenticated users in the same space or self" ON public.profiles;
 CREATE POLICY "Profiles are viewable by authenticated users in the same space or self"
     ON public.profiles FOR SELECT
     USING (
@@ -285,49 +286,58 @@ CREATE POLICY "Profiles are viewable by authenticated users in the same space or
         )
     );
 
+DROP POLICY IF EXISTS "Users can update their own profile" ON public.profiles;
 CREATE POLICY "Users can update their own profile"
     ON public.profiles FOR UPDATE
     USING (auth.uid() = id)
     WITH CHECK (auth.uid() = id);
 
 -- 2. Couple Spaces Policies
--- Only members of the space can view or update the space
+DROP POLICY IF EXISTS "Couple spaces viewable by members" ON public.couple_spaces;
 CREATE POLICY "Couple spaces viewable by members"
     ON public.couple_spaces FOR SELECT
     USING (public.is_couple_member(auth.uid(), id));
 
+DROP POLICY IF EXISTS "Authenticated users can create a couple space" ON public.couple_spaces;
 CREATE POLICY "Authenticated users can create a couple space"
     ON public.couple_spaces FOR INSERT
     WITH CHECK (auth.uid() = created_by);
 
+DROP POLICY IF EXISTS "Couple spaces updatable by members" ON public.couple_spaces;
 CREATE POLICY "Couple spaces updatable by members"
     ON public.couple_spaces FOR UPDATE
     USING (public.is_couple_member(auth.uid(), id))
     WITH CHECK (public.is_couple_member(auth.uid(), id));
 
 -- 3. Couple Members Policies
+DROP POLICY IF EXISTS "Couple members viewable by members of that space" ON public.couple_members;
 CREATE POLICY "Couple members viewable by members of that space"
     ON public.couple_members FOR SELECT
     USING (public.is_couple_member(auth.uid(), couple_space_id));
 
+DROP POLICY IF EXISTS "Users can insert membership for themselves during creation" ON public.couple_members;
 CREATE POLICY "Users can insert membership for themselves during creation"
     ON public.couple_members FOR INSERT
     WITH CHECK (auth.uid() = user_id);
 
 -- 4. Invitations Policies
+DROP POLICY IF EXISTS "Invitations viewable by creator or members of the space" ON public.invitations;
 CREATE POLICY "Invitations viewable by creator or members of the space"
     ON public.invitations FOR SELECT
     USING (created_by = auth.uid() OR public.is_couple_member(auth.uid(), couple_space_id));
 
+DROP POLICY IF EXISTS "Space members can create invitations" ON public.invitations;
 CREATE POLICY "Space members can create invitations"
     ON public.invitations FOR INSERT
     WITH CHECK (public.is_couple_member(auth.uid(), couple_space_id) AND auth.uid() = created_by);
 
 -- 5. Messages Policies
+DROP POLICY IF EXISTS "Messages viewable only by couple members" ON public.messages;
 CREATE POLICY "Messages viewable only by couple members"
     ON public.messages FOR SELECT
     USING (public.is_couple_member(auth.uid(), couple_space_id));
 
+DROP POLICY IF EXISTS "Messages insertable only by couple members" ON public.messages;
 CREATE POLICY "Messages insertable only by couple members"
     ON public.messages FOR INSERT
     WITH CHECK (
@@ -335,58 +345,71 @@ CREATE POLICY "Messages insertable only by couple members"
         AND auth.uid() = sender_id
     );
 
+DROP POLICY IF EXISTS "Messages updatable by original sender" ON public.messages;
 CREATE POLICY "Messages updatable by original sender"
     ON public.messages FOR UPDATE
     USING (auth.uid() = sender_id)
     WITH CHECK (auth.uid() = sender_id);
 
+DROP POLICY IF EXISTS "Messages deletable by original sender" ON public.messages;
 CREATE POLICY "Messages deletable by original sender"
     ON public.messages FOR DELETE
     USING (auth.uid() = sender_id);
 
 -- 6. Memories Policies
+DROP POLICY IF EXISTS "Memories viewable only by couple members" ON public.memories;
 CREATE POLICY "Memories viewable only by couple members"
     ON public.memories FOR SELECT
     USING (public.is_couple_member(auth.uid(), couple_space_id));
 
+DROP POLICY IF EXISTS "Memories insertable only by couple members" ON public.memories;
 CREATE POLICY "Memories insertable only by couple members"
     ON public.memories FOR INSERT
     WITH CHECK (public.is_couple_member(auth.uid(), couple_space_id) AND auth.uid() = created_by);
 
+DROP POLICY IF EXISTS "Memories updatable by couple members" ON public.memories;
 CREATE POLICY "Memories updatable by couple members"
     ON public.memories FOR UPDATE
     USING (public.is_couple_member(auth.uid(), couple_space_id));
 
+DROP POLICY IF EXISTS "Memories deletable by creator" ON public.memories;
 CREATE POLICY "Memories deletable by creator"
     ON public.memories FOR DELETE
     USING (auth.uid() = created_by);
 
 -- 7. Love Notes Policies
+DROP POLICY IF EXISTS "Love notes viewable only by couple members" ON public.love_notes;
 CREATE POLICY "Love notes viewable only by couple members"
     ON public.love_notes FOR SELECT
     USING (public.is_couple_member(auth.uid(), couple_space_id));
 
+DROP POLICY IF EXISTS "Love notes insertable by couple members" ON public.love_notes;
 CREATE POLICY "Love notes insertable by couple members"
     ON public.love_notes FOR INSERT
     WITH CHECK (public.is_couple_member(auth.uid(), couple_space_id) AND auth.uid() = author_id);
 
+DROP POLICY IF EXISTS "Love notes updatable by couple members" ON public.love_notes;
 CREATE POLICY "Love notes updatable by couple members"
     ON public.love_notes FOR UPDATE
     USING (public.is_couple_member(auth.uid(), couple_space_id));
 
+DROP POLICY IF EXISTS "Love notes deletable by author or couple members" ON public.love_notes;
 CREATE POLICY "Love notes deletable by author or couple members"
     ON public.love_notes FOR DELETE
     USING (public.is_couple_member(auth.uid(), couple_space_id));
 
 -- 8. Watch Sessions Policies
+DROP POLICY IF EXISTS "Watch sessions viewable only by couple members" ON public.watch_sessions;
 CREATE POLICY "Watch sessions viewable only by couple members"
     ON public.watch_sessions FOR SELECT
     USING (public.is_couple_member(auth.uid(), couple_space_id));
 
+DROP POLICY IF EXISTS "Watch sessions insertable by couple members" ON public.watch_sessions;
 CREATE POLICY "Watch sessions insertable by couple members"
     ON public.watch_sessions FOR INSERT
     WITH CHECK (public.is_couple_member(auth.uid(), couple_space_id));
 
+DROP POLICY IF EXISTS "Watch sessions updatable by couple members" ON public.watch_sessions;
 CREATE POLICY "Watch sessions updatable by couple members"
     ON public.watch_sessions FOR UPDATE
     USING (public.is_couple_member(auth.uid(), couple_space_id))
@@ -467,6 +490,7 @@ SET public = FALSE,
 
 -- Storage RLS Policies: Path structure is: <couple_space_id>/<file_name>
 -- Only authorized members of that couple space can read or upload.
+DROP POLICY IF EXISTS "Allow couple members to download their media" ON storage.objects;
 CREATE POLICY "Allow couple members to download their media"
     ON storage.objects FOR SELECT
     TO authenticated
@@ -478,6 +502,7 @@ CREATE POLICY "Allow couple members to download their media"
         )
     );
 
+DROP POLICY IF EXISTS "Allow couple members to upload their media" ON storage.objects;
 CREATE POLICY "Allow couple members to upload their media"
     ON storage.objects FOR INSERT
     TO authenticated
@@ -489,6 +514,7 @@ CREATE POLICY "Allow couple members to upload their media"
         )
     );
 
+DROP POLICY IF EXISTS "Allow couple members to delete their uploaded media" ON storage.objects;
 CREATE POLICY "Allow couple members to delete their uploaded media"
     ON storage.objects FOR DELETE
     TO authenticated

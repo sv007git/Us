@@ -119,7 +119,7 @@ export class WatchSyncEngine {
       await supabase?.from('watch_sessions').upsert(
         {
           couple_space_id: this.coupleSpaceId,
-          current_time: payload.currentTime,
+          playback_position: payload.currentTime,
           is_playing: payload.isPlaying,
           playback_rate: payload.playbackRate,
           last_updated_by: this.currentUserId,
