@@ -67,6 +67,20 @@ const getCredentials = () => {
 export const { url: initialUrl, key: initialKey, source: credentialSource } = getCredentials()
 export const isConfigured = Boolean(initialUrl && initialKey)
 
+// Polyfill WebSocket in Node headless environments (tests / CI) if native WebSocket is absent
+if (typeof window === 'undefined' && typeof globalThis.WebSocket === 'undefined') {
+  globalThis.WebSocket = class MockWebSocket {
+    constructor(url) {
+      this.url = url
+      this.readyState = 0
+    }
+    send() {}
+    close() {}
+    addEventListener() {}
+    removeEventListener() {}
+  }
+}
+
 // Create Supabase client singleton
 export const supabase = isConfigured
   ? createClient(initialUrl, initialKey, {
