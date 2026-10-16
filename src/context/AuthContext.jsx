@@ -69,54 +69,74 @@ export const AuthProvider = ({ children }) => {
     }
   }, [])
 
+  const handleAuthError = (err) => {
+    const msg = err?.message || String(err)
+    if (msg.includes('Failed to fetch') || err?.name === 'TypeError') {
+      return new Error(
+        'Cannot connect to Supabase ("Failed to fetch"). Please check your Supabase Project URL in the Config dialog, verify it is in the format "https://<project-ref>.supabase.co" (not the dashboard URL), and ensure your Supabase project is unpaused.'
+      )
+    }
+    return err
+  }
+
   const signUp = async (email, password, displayName) => {
     if (!supabase) throw new Error('Supabase client is not configured')
     setAuthError(null)
-    const { data, error } = await supabase.auth.signUp({
-      email,
-      password,
-      options: {
-        data: {
-          display_name: displayName || email.split('@')[0],
+    try {
+      const { data, error } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          data: {
+            display_name: displayName || email.split('@')[0],
+          },
         },
-      },
-    })
-
-    if (error) {
-      setAuthError(error.message)
-      throw error
-    }
-
-    if (data?.user) {
-      // Upsert profile
-      await supabase.from('profiles').upsert({
-        id: data.user.id,
-        display_name: displayName || email.split('@')[0],
       })
-      await fetchProfile(data.user.id)
-    }
 
-    return data
+      if (error) {
+        throw error
+      }
+
+      if (data?.user) {
+        // Upsert profile
+        await supabase.from('profiles').upsert({
+          id: data.user.id,
+          display_name: displayName || email.split('@')[0],
+        })
+        await fetchProfile(data.user.id)
+      }
+
+      return data
+    } catch (err) {
+      const handled = handleAuthError(err)
+      setAuthError(handled.message)
+      throw handled
+    }
   }
 
   const signIn = async (email, password) => {
     if (!supabase) throw new Error('Supabase client is not configured')
     setAuthError(null)
-    const { data, error } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    })
+    try {
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      })
 
-    if (error) {
-      setAuthError(error.message)
-      throw error
+      if (error) {
+        throw error
+      }
+
+      if (data?.user) {
+        await fetchProfile(data.user.id)
+      }
+
+      return data
+    } catch (err) {
+      const handled = handleAuthError(err)
+      setAuthError(handled.message)
+      throw handled
     }
-
-    if (data?.user) {
-      await fetchProfile(data.user.id)
-    }
-
-    return data
   }
 
   const signOut = async () => {
@@ -132,11 +152,17 @@ export const AuthProvider = ({ children }) => {
   const resetPassword = async (email) => {
     if (!supabase) throw new Error('Supabase client is not configured')
     setAuthError(null)
-    const { data, error } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: window.location.href,
-    })
-    if (error) throw error
-    return data
+    try {
+      const { data, error } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: window.location.href,
+      })
+      if (error) throw error
+      return data
+    } catch (err) {
+      const handled = handleAuthError(err)
+      setAuthError(handled.message)
+      throw handled
+    }
   }
 
   const updateProfile = async ({ displayName, avatarUrl, statusMood }) => {

@@ -1,6 +1,14 @@
 import React, { useState } from 'react'
-import { KeyRound, Database, Radio, X, Check, ExternalLink } from 'lucide-react'
-import { initialUrl, initialKey, saveRuntimeConfig, clearRuntimeConfig, credentialSource } from '../../lib/supabaseClient'
+import { KeyRound, Database, Radio, X, Check, ExternalLink, Loader2, RefreshCw } from 'lucide-react'
+import {
+  initialUrl,
+  initialKey,
+  saveRuntimeConfig,
+  clearRuntimeConfig,
+  credentialSource,
+  formatSupabaseUrl,
+  testSupabaseConnection,
+} from '../../lib/supabaseClient'
 
 export const ConfigModal = ({ isOpen, onClose }) => {
   const [supabaseUrl, setSupabaseUrl] = useState(initialUrl || '')
@@ -29,10 +37,43 @@ export const ConfigModal = ({ isOpen, onClose }) => {
       return ''
     }
   })
+  const [isTesting, setIsTesting] = useState(false)
+  const [testResult, setTestResult] = useState(null)
   const [savedSuccess, setSavedSuccess] = useState(false)
   const [error, setError] = useState(null)
 
   if (!isOpen) return null
+
+  const handleUrlChange = (e) => {
+    const raw = e.target.value
+    setSupabaseUrl(raw)
+    setTestResult(null)
+    setError(null)
+  }
+
+  const handleTestConnection = async () => {
+    setError(null)
+    setTestResult(null)
+    setIsTesting(true)
+
+    const cleanedUrl = formatSupabaseUrl(supabaseUrl)
+    setSupabaseUrl(cleanedUrl)
+
+    try {
+      await testSupabaseConnection(cleanedUrl, supabaseKey)
+      setTestResult({
+        success: true,
+        message: `Successfully connected to ${cleanedUrl}!`,
+      })
+    } catch (err) {
+      setTestResult({
+        success: false,
+        message: err.message,
+      })
+    } finally {
+      setIsTesting(false)
+    }
+  }
 
   const handleSave = (e) => {
     e.preventDefault()
@@ -43,10 +84,7 @@ export const ConfigModal = ({ isOpen, onClose }) => {
       return
     }
 
-    if (!supabaseUrl.startsWith('https://')) {
-      setError('Supabase URL must start with https://')
-      return
-    }
+    const cleanedUrl = formatSupabaseUrl(supabaseUrl)
 
     // Save TURN config if provided
     if (turnUrls.trim()) {
@@ -61,7 +99,7 @@ export const ConfigModal = ({ isOpen, onClose }) => {
     }
 
     try {
-      saveRuntimeConfig(supabaseUrl, supabaseKey)
+      saveRuntimeConfig(cleanedUrl, supabaseKey)
       setSavedSuccess(true)
     } catch (err) {
       setError(err.message)
@@ -83,9 +121,9 @@ export const ConfigModal = ({ isOpen, onClose }) => {
             <Database className="w-5 h-5" />
           </div>
           <div>
-            <h2 className="text-xl font-bold text-slate-900 dark:text-white">Service Configuration</h2>
+            <h2 className="text-xl font-bold text-slate-900 dark:text-white">Supabase Configuration</h2>
             <p className="text-xs text-slate-500 dark:text-slate-400">
-              Credentials are saved in your browser and used securely.
+              Credentials are saved securely in your browser's local storage.
             </p>
           </div>
         </div>
@@ -93,6 +131,19 @@ export const ConfigModal = ({ isOpen, onClose }) => {
         {error && (
           <div className="mb-4 p-3 rounded-xl bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-900/50 text-red-600 dark:text-red-300 text-xs">
             {error}
+          </div>
+        )}
+
+        {testResult && (
+          <div
+            className={`mb-4 p-3 rounded-xl border text-xs flex items-center gap-2 ${
+              testResult.success
+                ? 'bg-emerald-50 dark:bg-emerald-950/40 border-emerald-200 text-emerald-600 dark:text-emerald-300'
+                : 'bg-red-50 dark:bg-red-950/40 border-red-200 text-red-600 dark:text-red-300'
+            }`}
+          >
+            {testResult.success ? <Check className="w-4 h-4 shrink-0" /> : <X className="w-4 h-4 shrink-0" />}
+            <span>{testResult.message}</span>
           </div>
         )}
 
@@ -105,17 +156,23 @@ export const ConfigModal = ({ isOpen, onClose }) => {
         <form onSubmit={handleSave} className="space-y-4">
           {/* Supabase URL */}
           <div>
-            <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
-              Supabase Project URL <span className="text-rose-500">*</span>
-            </label>
+            <div className="flex items-center justify-between mb-1">
+              <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300">
+                Supabase Project URL <span className="text-rose-500">*</span>
+              </label>
+              <span className="text-[10px] text-slate-400">Format: https://xyz.supabase.co</span>
+            </div>
             <input
-              type="url"
+              type="text"
               value={supabaseUrl}
-              onChange={(e) => setSupabaseUrl(e.target.value)}
-              placeholder="https://xyzcompany.supabase.co"
+              onChange={handleUrlChange}
+              placeholder="https://your-project-ref.supabase.co"
               required
               className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/60 text-slate-900 dark:text-slate-100 text-sm focus:outline-none focus:ring-2 focus:ring-rose-500"
             />
+            <p className="text-[11px] text-slate-400 mt-1">
+              Found in: <strong>Project Settings → API → Project URL</strong>. (Do not paste the dashboard browser URL).
+            </p>
           </div>
 
           {/* Supabase Anon Key */}
@@ -126,11 +183,39 @@ export const ConfigModal = ({ isOpen, onClose }) => {
             <textarea
               rows={3}
               value={supabaseKey}
-              onChange={(e) => setSupabaseKey(e.target.value)}
+              onChange={(e) => {
+                setSupabaseKey(e.target.value)
+                setTestResult(null)
+              }}
               placeholder="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
               required
               className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/60 text-slate-900 dark:text-slate-100 text-xs font-mono focus:outline-none focus:ring-2 focus:ring-rose-500"
             />
+            <p className="text-[11px] text-slate-400 mt-1">
+              Found in: <strong>Project Settings → API → Project API Keys → anon / public</strong>.
+            </p>
+          </div>
+
+          {/* Test Connection Button */}
+          <div>
+            <button
+              type="button"
+              disabled={isTesting || !supabaseUrl || !supabaseKey}
+              onClick={handleTestConnection}
+              className="w-full py-2.5 px-4 rounded-xl border border-rose-300 dark:border-rose-800 hover:bg-rose-50 dark:hover:bg-rose-950/40 text-rose-600 dark:text-rose-300 text-xs font-semibold flex items-center justify-center gap-2 transition disabled:opacity-50"
+            >
+              {isTesting ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  <span>Testing Connection to Supabase...</span>
+                </>
+              ) : (
+                <>
+                  <RefreshCw className="w-3.5 h-3.5" />
+                  <span>Test Connection Now</span>
+                </>
+              )}
+            </button>
           </div>
 
           {/* WebRTC TURN Server Section */}
@@ -138,11 +223,11 @@ export const ConfigModal = ({ isOpen, onClose }) => {
             <div className="flex items-center space-x-2 mb-2">
               <Radio className="w-4 h-4 text-rose-500" />
               <h3 className="text-sm font-semibold text-slate-900 dark:text-slate-200">
-                WebRTC TURN Server (Optional for strict mobile networks)
+                WebRTC TURN Relay (Optional for cellular carrier networks)
               </h3>
             </div>
             <p className="text-xs text-slate-500 mb-3">
-              Google STUN is used by default. For carrier NAT traversal on cellular networks, provide TURN credentials (e.g. from Metered.ca).
+              Google STUN is used by default. For strict NAT traversal between mobile networks, enter TURN server credentials (e.g. free Metered.ca).
             </p>
 
             <div className="space-y-3">
