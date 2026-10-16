@@ -19,6 +19,7 @@ import confetti from 'canvas-confetti'
 export const ChatInput = ({
   onSendMessage,
   onSendMedia,
+  onTyping,
   replyingTo,
   onCancelReply,
   editingMessage,
@@ -32,6 +33,7 @@ export const ChatInput = ({
   const [isGifPickerOpen, setIsGifPickerOpen] = useState(false)
   const fileInputRef = useRef(null)
   const textareaRef = useRef(null)
+  const typingDebounceRef = useRef(null)
 
   // Populate text if editing
   useEffect(() => {
@@ -48,12 +50,25 @@ export const ChatInput = ({
     }
   }, [replyingTo])
 
-  // Auto-resize textarea
+  // Auto-resize textarea & signal typing
   const handleTextChange = (e) => {
-    setText(e.target.value)
+    const val = e.target.value
+    setText(val)
     if (textareaRef.current) {
       textareaRef.current.style.height = 'auto'
       textareaRef.current.style.height = `${Math.min(textareaRef.current.scrollHeight, 120)}px`
+    }
+
+    if (onTyping) {
+      if (val.trim()) {
+        onTyping(true)
+        if (typingDebounceRef.current) clearTimeout(typingDebounceRef.current)
+        typingDebounceRef.current = setTimeout(() => {
+          onTyping(false)
+        }, 2500)
+      } else {
+        onTyping(false)
+      }
     }
   }
 
@@ -67,6 +82,9 @@ export const ChatInput = ({
   const handleSend = () => {
     const trimmed = text.trim()
     if (!trimmed && !editingMessage) return
+
+    if (onTyping) onTyping(false)
+    if (typingDebounceRef.current) clearTimeout(typingDebounceRef.current)
 
     if (editingMessage) {
       onSaveEdit?.(editingMessage.id, trimmed)

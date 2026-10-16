@@ -49,12 +49,12 @@ const AppContent = () => {
 
   // Paired couple -> Main Application Experience
   return (
-    <div className="min-h-screen flex flex-col bg-rose-50/40 dark:bg-midnight-950 text-slate-800 dark:text-slate-100 transition-colors duration-200">
+    <div className="h-screen h-[100dvh] flex flex-col bg-rose-50/40 dark:bg-midnight-950 text-slate-800 dark:text-slate-100 transition-colors duration-200 overflow-hidden">
       {/* Top Navbar */}
       <Navbar currentTab={currentTab} setCurrentTab={setCurrentTab} />
 
       {/* Main Tab View */}
-      <main className="flex-1 flex flex-col overflow-y-auto">
+      <main className={`flex-1 flex flex-col min-h-0 pb-[calc(4rem+env(safe-area-inset-bottom,0px))] ${currentTab === 'chat' ? 'overflow-hidden' : 'overflow-y-auto'}`}>
         {currentTab === 'dashboard' && <DashboardView setCurrentTab={setCurrentTab} />}
         {currentTab === 'chat' && <ChatView />}
         {currentTab === 'watch' && <WatchRoom />}

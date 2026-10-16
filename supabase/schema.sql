@@ -520,6 +520,12 @@ BEGIN
     END IF;
 END $$;
 
+-- Enable Full Replica Identity so UPDATE and DELETE events broadcast complete row payloads
+ALTER TABLE public.messages REPLICA IDENTITY FULL;
+ALTER TABLE public.watch_sessions REPLICA IDENTITY FULL;
+ALTER TABLE public.couple_spaces REPLICA IDENTITY FULL;
+ALTER TABLE public.profiles REPLICA IDENTITY FULL;
+
 -- ===================================================================
 -- Supabase Storage Setup (couple-media bucket)
 -- ===================================================================

@@ -8,6 +8,9 @@ export const getIceServers = () => {
     { urls: 'stun:stun.l.google.com:19302' },
     { urls: 'stun:stun1.l.google.com:19302' },
     { urls: 'stun:stun2.l.google.com:19302' },
+    { urls: 'stun:stun3.l.google.com:19302' },
+    { urls: 'stun:stun4.l.google.com:19302' },
+    { urls: 'stun:stun.cloudflare.com:3478' },
   ]
 
   // Check custom TURN config in localStorage first, then env
@@ -63,6 +66,7 @@ export class WebRtcCallManager {
     this.isVideoCall = true
     this.pendingIceCandidates = []
     this.callState = 'idle' // idle, outgoing, incoming, connecting, connected, ended
+    this.disconnectTimer = null
   }
 
   setCallState(newState, metadata = {}) {
@@ -83,8 +87,35 @@ export class WebRtcCallManager {
     this.signalingChannel
       .on('broadcast', { event: 'call-offer' }, async ({ payload }) => {
         if (payload.callerId === this.currentUserId) return
+
+        // Handle ICE restart during an active or connecting call
+        if (payload.isIceRestart && (this.callState === 'connected' || this.callState === 'connecting')) {
+          console.log('Received WebRTC ICE restart offer during active call. Renegotiating...')
+          if (this.peerConnection) {
+            try {
+              await this.peerConnection.setRemoteDescription(new RTCSessionDescription(payload.sdp))
+              this.processPendingCandidates()
+              const answer = await this.peerConnection.createAnswer()
+              await this.peerConnection.setLocalDescription(answer)
+              this.signalingChannel.send({
+                type: 'broadcast',
+                event: 'call-answer',
+                payload: {
+                  sdp: answer,
+                  calleeId: this.currentUserId,
+                  callerId: payload.callerId,
+                  isIceRestart: true,
+                },
+              })
+            } catch (e) {
+              console.warn('ICE restart renegotiation failed:', e)
+            }
+          }
+          return
+        }
+
         if (this.callState !== 'idle') {
-          // Send busy message
+          // Send busy message only for new calls when not idle
           this.signalingChannel.send({
             type: 'broadcast',
             event: 'call-busy',
@@ -101,14 +132,18 @@ export class WebRtcCallManager {
       })
       .on('broadcast', { event: 'call-answer' }, async ({ payload }) => {
         if (payload.calleeId === this.currentUserId) return
-        if (this.peerConnection && this.callState === 'outgoing') {
+        if (this.peerConnection && (this.callState === 'outgoing' || this.callState === 'connected' || this.callState === 'connecting')) {
           try {
             await this.peerConnection.setRemoteDescription(new RTCSessionDescription(payload.sdp))
-            this.setCallState('connecting')
+            if (this.callState === 'outgoing') {
+              this.setCallState('connecting')
+            }
             this.processPendingCandidates()
           } catch (e) {
             console.error('Error handling answer:', e)
-            this.onError('Failed to establish peer connection: ' + e.message)
+            if (this.callState === 'outgoing') {
+              this.onError('Failed to establish peer connection: ' + e.message)
+            }
           }
         }
       })
@@ -229,11 +264,34 @@ export class WebRtcCallManager {
       const state = this.peerConnection?.connectionState
       console.log('Peer connection state:', state)
       if (state === 'connected') {
+        if (this.disconnectTimer) {
+          clearTimeout(this.disconnectTimer)
+          this.disconnectTimer = null
+        }
         this.setCallState('connected')
-      } else if (state === 'disconnected' || state === 'failed') {
-        console.warn('WebRTC disconnected/failed, attempting ICE restart...')
+      } else if (state === 'disconnected') {
+        console.warn('WebRTC disconnected, waiting 7s grace period before attempting ICE restart...')
+        if (!this.disconnectTimer) {
+          this.disconnectTimer = setTimeout(() => {
+            this.disconnectTimer = null
+            if (this.peerConnection?.connectionState === 'disconnected') {
+              console.warn('Still disconnected after grace period, attempting ICE restart...')
+              this.restartIce()
+            }
+          }, 7000)
+        }
+      } else if (state === 'failed') {
+        console.warn('WebRTC failed, attempting immediate ICE restart...')
+        if (this.disconnectTimer) {
+          clearTimeout(this.disconnectTimer)
+          this.disconnectTimer = null
+        }
         this.restartIce()
       } else if (state === 'closed') {
+        if (this.disconnectTimer) {
+          clearTimeout(this.disconnectTimer)
+          this.disconnectTimer = null
+        }
         this.setCallState('ended')
       }
     }
@@ -425,6 +483,11 @@ export class WebRtcCallManager {
    * Releases camera, microphone, and WebRTC peer connection resources cleanly
    */
   cleanup() {
+    if (this.disconnectTimer) {
+      clearTimeout(this.disconnectTimer)
+      this.disconnectTimer = null
+    }
+
     if (this.localStream) {
       this.localStream.getTracks().forEach((track) => {
         try {

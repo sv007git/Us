@@ -82,10 +82,32 @@ export const MessageBubble = ({
     return (
       <div className={`flex flex-col my-1 ${isOwn ? 'items-end' : 'items-start'} group relative`}>
         <div className="flex items-end gap-1.5">
+          {isOwn && (
+            <button
+              type="button"
+              onClick={() => onReply?.(message)}
+              className="p-1.5 rounded-full text-rose-500 hover:bg-rose-50 dark:hover:bg-midnight-800 opacity-75 sm:opacity-0 group-hover:opacity-100 transition mb-1"
+              title="Reply"
+              aria-label="Reply to sticker"
+            >
+              <Reply className="w-3.5 h-3.5" />
+            </button>
+          )}
           <div className="text-5xl sm:text-6xl p-1 select-none animate-bounce-short hover:scale-110 transition-transform">
             {content}
           </div>
           <span className="text-[10px] text-slate-400 mb-1">{formattedTime}</span>
+          {!isOwn && (
+            <button
+              type="button"
+              onClick={() => onReply?.(message)}
+              className="p-1.5 rounded-full text-rose-500 hover:bg-rose-50 dark:hover:bg-midnight-800 opacity-75 sm:opacity-0 group-hover:opacity-100 transition mb-1"
+              title="Reply"
+              aria-label="Reply to sticker"
+            >
+              <Reply className="w-3.5 h-3.5" />
+            </button>
+          )}
         </div>
       </div>
     )
@@ -99,6 +121,31 @@ export const MessageBubble = ({
           {partnerName || 'My Love'}
         </span>
       )}
+
+      <div className="flex items-center gap-1.5 max-w-full">
+        {/* Left side actions for own messages */}
+        {isOwn && (
+          <div className="flex items-center gap-1 opacity-75 sm:opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
+            <button
+              type="button"
+              onClick={() => onReply?.(message)}
+              className="p-1.5 rounded-full bg-white dark:bg-midnight-800 border border-rose-200/60 dark:border-rose-900/40 shadow-sm text-rose-500 hover:text-rose-600 active:scale-95 transition"
+              title="Reply"
+              aria-label="Reply to message"
+            >
+              <Reply className="w-3.5 h-3.5" />
+            </button>
+            <button
+              type="button"
+              onClick={() => setShowMenu((prev) => !prev)}
+              className="p-1.5 rounded-full bg-white dark:bg-midnight-800 border border-slate-200 dark:border-slate-700 shadow-sm text-slate-500 hover:text-slate-700 active:scale-95 transition"
+              title="Message options"
+              aria-label="Message options"
+            >
+              <MoreVertical className="w-3.5 h-3.5" />
+            </button>
+          </div>
+        )}
 
       <div className="relative max-w-[85%] sm:max-w-[70%]">
         {/* Reply Quote Banner */}
@@ -259,22 +306,10 @@ export const MessageBubble = ({
           </div>
         </div>
 
-        {/* Floating Quick Action Trigger */}
-        <button
-          type="button"
-          onClick={() => setShowMenu((prev) => !prev)}
-          className={`absolute top-1/2 -translate-y-1/2 p-1.5 rounded-full bg-white dark:bg-midnight-800 border border-slate-200 dark:border-slate-700 shadow-sm opacity-0 group-hover:opacity-100 transition-opacity ${
-            isOwn ? '-left-8' : '-right-8'
-          }`}
-          title="Message options"
-        >
-          <MoreVertical className="w-3.5 h-3.5 text-slate-500" />
-        </button>
-
         {/* Message Options Dropdown Menu */}
         {showMenu && (
           <div
-            className={`absolute z-20 bottom-full mb-1 py-1 w-32 bg-white dark:bg-midnight-900 border border-rose-200 dark:border-rose-900/40 rounded-xl shadow-xl text-xs font-medium text-slate-700 dark:text-slate-200 animate-scale-up ${
+            className={`absolute z-30 bottom-full mb-1 py-1 w-32 bg-white dark:bg-midnight-900 border border-rose-200 dark:border-rose-900/40 rounded-xl shadow-xl text-xs font-medium text-slate-700 dark:text-slate-200 animate-scale-up ${
               isOwn ? 'right-0' : 'left-0'
             }`}
           >
@@ -322,6 +357,31 @@ export const MessageBubble = ({
           </div>
         )}
       </div>
+
+      {/* Right side actions for partner messages */}
+      {!isOwn && (
+        <div className="flex items-center gap-1 opacity-75 sm:opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
+          <button
+            type="button"
+            onClick={() => onReply?.(message)}
+            className="p-1.5 rounded-full bg-white dark:bg-midnight-800 border border-rose-200/60 dark:border-rose-900/40 shadow-sm text-rose-500 hover:text-rose-600 active:scale-95 transition"
+            title="Reply"
+            aria-label="Reply to message"
+          >
+            <Reply className="w-3.5 h-3.5" />
+          </button>
+          <button
+            type="button"
+            onClick={() => setShowMenu((prev) => !prev)}
+            className="p-1.5 rounded-full bg-white dark:bg-midnight-800 border border-slate-200 dark:border-slate-700 shadow-sm text-slate-500 hover:text-slate-700 active:scale-95 transition"
+            title="Message options"
+            aria-label="Message options"
+          >
+            <MoreVertical className="w-3.5 h-3.5" />
+          </button>
+        </div>
+      )}
     </div>
+  </div>
   )
 }

@@ -22,9 +22,12 @@ export const ChatView = () => {
   const [isUploading, setIsUploading] = useState(false)
   const [uploadProgress, setUploadProgress] = useState(0)
   const [showScrollBottom, setShowScrollBottom] = useState(false)
+  const [isPartnerTyping, setIsPartnerTyping] = useState(false)
 
   const messagesEndRef = useRef(null)
   const chatContainerRef = useRef(null)
+  const chatChannelRef = useRef(null)
+  const typingTimeoutRef = useRef(null)
 
   const scrollToBottom = (smooth = true) => {
     messagesEndRef.current?.scrollIntoView({ behavior: smooth ? 'smooth' : 'auto' })
@@ -70,12 +73,51 @@ export const ChatView = () => {
     fetchMessages()
   }, [fetchMessages])
 
-  // Realtime subscription for incoming/edited/deleted messages
+  // Realtime subscription for incoming/edited/deleted messages & instant broadcast
   useEffect(() => {
     if (!supabase || !coupleSpace?.id) return
 
     const channel = supabase
-      .channel(`chat_messages_${coupleSpace.id}`)
+      .channel(`chat_messages_${coupleSpace.id}`, {
+        config: { broadcast: { self: false } },
+      })
+      // 1. Instant Realtime Broadcast (<50ms delivery)
+      .on('broadcast', { event: 'new-message' }, async ({ payload }) => {
+        if (!payload || !payload.id) return
+        if (payload.sender_id === user?.id) return
+
+        if (payload.media_url && !payload.media_url.startsWith('http')) {
+          payload.media_url = (await getSignedMediaUrl(payload.media_url, 86400)) || payload.media_url
+        }
+
+        setMessages((prev) => {
+          if (prev.some((m) => m.id === payload.id)) return prev
+          return [...prev, payload]
+        })
+        setIsPartnerTyping(false)
+        setTimeout(() => scrollToBottom(true), 80)
+      })
+      .on('broadcast', { event: 'edit-message' }, ({ payload }) => {
+        if (!payload || !payload.id) return
+        setMessages((prev) =>
+          prev.map((m) => (m.id === payload.id ? { ...m, ...payload } : m))
+        )
+      })
+      .on('broadcast', { event: 'delete-message' }, ({ payload }) => {
+        if (!payload || !payload.id) return
+        setMessages((prev) => prev.filter((m) => m.id !== payload.id))
+      })
+      .on('broadcast', { event: 'typing' }, ({ payload }) => {
+        if (!payload || payload.sender_id === user?.id) return
+        setIsPartnerTyping(Boolean(payload.isTyping))
+        if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current)
+        if (payload.isTyping) {
+          typingTimeoutRef.current = setTimeout(() => {
+            setIsPartnerTyping(false)
+          }, 3500)
+        }
+      })
+      // 2. Database WAL Replication (postgres_changes)
       .on(
         'postgres_changes',
         {
@@ -112,10 +154,14 @@ export const ChatView = () => {
         console.log('Realtime chat channel status:', status)
       })
 
+    chatChannelRef.current = channel
+
     return () => {
+      chatChannelRef.current = null
       channel.unsubscribe()
+      if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current)
     }
-  }, [coupleSpace?.id])
+  }, [coupleSpace?.id, user?.id])
 
   // Check scroll position to display "Scroll to bottom" button
   const handleScroll = () => {
@@ -143,12 +189,42 @@ export const ChatView = () => {
       const { data, error } = await supabase.from('messages').insert(newRecord).select().single()
       if (error) throw error
 
+      // Optimistically append message immediately to local state
+      setMessages((prev) => {
+        if (prev.some((m) => m.id === data.id)) return prev
+        return [...prev, data]
+      })
+
+      // Broadcast immediately to partner over Realtime channel for instant sub-50ms sync
+      chatChannelRef.current?.send({
+        type: 'broadcast',
+        event: 'new-message',
+        payload: data,
+      })
+
+      // Clear typing indicator
+      chatChannelRef.current?.send({
+        type: 'broadcast',
+        event: 'typing',
+        payload: { sender_id: user.id, isTyping: false },
+      })
+
       setReplyingTo(null)
       setTimeout(() => scrollToBottom(true), 80)
     } catch (err) {
       console.error('Error sending message:', err)
       setError('Failed to send message: ' + err.message)
     }
+  }
+
+  // Broadcast typing signal from current user
+  const handleUserTyping = (isTyping) => {
+    if (!chatChannelRef.current || !user?.id) return
+    chatChannelRef.current.send({
+      type: 'broadcast',
+      event: 'typing',
+      payload: { sender_id: user.id, isTyping },
+    })
   }
 
   // Upload and send photo, video, or audio
@@ -197,6 +273,17 @@ export const ChatView = () => {
         })
         .eq('id', id)
       if (error) throw error
+
+      setMessages((prev) =>
+        prev.map((m) => (m.id === id ? { ...m, content: newContent, is_edited: true } : m))
+      )
+
+      chatChannelRef.current?.send({
+        type: 'broadcast',
+        event: 'edit-message',
+        payload: { id, content: newContent, is_edited: true },
+      })
+
       setEditingMessage(null)
     } catch (err) {
       console.error('Error editing message:', err)
@@ -210,6 +297,14 @@ export const ChatView = () => {
     try {
       const { error } = await supabase.from('messages').delete().eq('id', id)
       if (error) throw error
+
+      setMessages((prev) => prev.filter((m) => m.id !== id))
+
+      chatChannelRef.current?.send({
+        type: 'broadcast',
+        event: 'delete-message',
+        payload: { id },
+      })
     } catch (err) {
       console.error('Error deleting message:', err)
       setError('Could not delete message.')
@@ -234,7 +329,7 @@ export const ChatView = () => {
   }
 
   return (
-    <div className="flex-1 flex flex-col h-[calc(100vh-8rem)] relative overflow-hidden bg-rose-50/20 dark:bg-midnight-950/20">
+    <div className="flex-1 flex flex-col h-full min-h-0 relative overflow-hidden bg-rose-50/20 dark:bg-midnight-950/20">
       {/* Error alert */}
       {error && (
         <div className="p-2.5 mx-3 mt-2 rounded-xl bg-red-50 dark:bg-red-950/40 border border-red-200 text-xs text-red-600 dark:text-red-300 flex items-center justify-between z-10">
@@ -320,10 +415,23 @@ export const ChatView = () => {
         </button>
       )}
 
+      {/* Realtime Partner Typing Indicator */}
+      {isPartnerTyping && (
+        <div className="px-4 py-1 text-xs text-rose-500 dark:text-rose-400 flex items-center gap-1.5 animate-pulse select-none bg-rose-50/50 dark:bg-midnight-900/50 border-t border-rose-100/50 dark:border-rose-950/40">
+          <div className="flex gap-1 items-center">
+            <span className="w-1.5 h-1.5 rounded-full bg-rose-500 animate-bounce" style={{ animationDelay: '0ms' }} />
+            <span className="w-1.5 h-1.5 rounded-full bg-rose-500 animate-bounce" style={{ animationDelay: '150ms' }} />
+            <span className="w-1.5 h-1.5 rounded-full bg-rose-500 animate-bounce" style={{ animationDelay: '300ms' }} />
+          </div>
+          <span className="italic font-medium">{partner?.display_name || 'My Love'} is typing...</span>
+        </div>
+      )}
+
       {/* Chat Input Bar */}
       <ChatInput
         onSendMessage={handleSendMessage}
         onSendMedia={handleSendMedia}
+        onTyping={handleUserTyping}
         replyingTo={replyingTo}
         onCancelReply={() => setReplyingTo(null)}
         editingMessage={editingMessage}

@@ -46,4 +46,11 @@ describe('WebRTC ICE Server Configuration', () => {
     expect(turnEntry.username).toBe('couples_user')
     expect(turnEntry.credential).toBe('secret_turn_password')
   })
+
+  it('includes Cloudflare STUN server for fallback resilience', () => {
+    const config = getIceServers()
+    const stunUrls = config.iceServers.map((s) => s.urls).flat()
+    const hasCloudflareStun = stunUrls.some((u) => u.includes('stun.cloudflare.com'))
+    expect(hasCloudflareStun).toBe(true)
+  })
 })
