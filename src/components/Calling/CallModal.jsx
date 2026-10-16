@@ -183,8 +183,16 @@ export const CallModal = () => {
       {callState === 'incoming' && (
         <div className="flex flex-col items-center justify-center text-center max-w-sm w-full space-y-6">
           <div className="relative">
-            <div className="w-28 h-28 rounded-full bg-gradient-to-tr from-rose-500 to-pink-500 flex items-center justify-center shadow-2xl shadow-rose-500/50 animate-pulse">
-              <Heart className="w-14 h-14 fill-current text-white animate-heartbeat" />
+            <div className="w-28 h-28 rounded-full bg-gradient-to-tr from-rose-500 to-pink-500 flex items-center justify-center shadow-2xl shadow-rose-500/50 animate-pulse overflow-hidden border-2 border-rose-300">
+              {partner?.avatar_url ? (
+                <img
+                  src={partner.avatar_url}
+                  alt={incomingCallData?.callerName || partner?.display_name || 'Caller'}
+                  className="w-full h-full object-cover"
+                />
+              ) : (
+                <Heart className="w-14 h-14 fill-current text-white animate-heartbeat" />
+              )}
             </div>
             <span className="absolute -bottom-1 -right-1 p-2 rounded-full bg-emerald-500 text-white shadow-md">
               {incomingCallData?.isVideo ? <Video className="w-4 h-4" /> : <Phone className="w-4 h-4" />}
@@ -230,8 +238,16 @@ export const CallModal = () => {
       {/* State 2: Outgoing Call Screen */}
       {callState === 'outgoing' && (
         <div className="flex flex-col items-center justify-center text-center max-w-sm w-full space-y-6">
-          <div className="w-28 h-28 rounded-full bg-gradient-to-tr from-rose-500 to-pink-500 flex items-center justify-center shadow-2xl shadow-rose-500/40 animate-pulse">
-            <Heart className="w-14 h-14 fill-current text-white animate-heartbeat" />
+          <div className="w-28 h-28 rounded-full bg-gradient-to-tr from-rose-500 to-pink-500 flex items-center justify-center shadow-2xl shadow-rose-500/40 animate-pulse overflow-hidden border-2 border-rose-300">
+            {partner?.avatar_url ? (
+              <img
+                src={partner.avatar_url}
+                alt={partner?.display_name || 'Partner'}
+                className="w-full h-full object-cover"
+              />
+            ) : (
+              <Heart className="w-14 h-14 fill-current text-white animate-heartbeat" />
+            )}
           </div>
 
           <div>
@@ -271,8 +287,16 @@ export const CallModal = () => {
               />
             ) : (
               <div className="flex flex-col items-center justify-center space-y-4">
-                <div className="w-32 h-32 rounded-full bg-gradient-to-tr from-rose-500 to-pink-500 flex items-center justify-center shadow-2xl shadow-rose-500/30 animate-pulse">
-                  <Heart className="w-16 h-16 fill-current text-white animate-heartbeat" />
+                <div className="w-32 h-32 rounded-full bg-gradient-to-tr from-rose-500 to-pink-500 flex items-center justify-center shadow-2xl shadow-rose-500/30 animate-pulse overflow-hidden border-2 border-rose-300">
+                  {partner?.avatar_url ? (
+                    <img
+                      src={partner.avatar_url}
+                      alt={partner?.display_name || 'Partner'}
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
+                    <Heart className="w-16 h-16 fill-current text-white animate-heartbeat" />
+                  )}
                 </div>
                 <h3 className="text-xl font-bold font-romantic text-rose-300">
                   {partner?.display_name || 'My Love'}

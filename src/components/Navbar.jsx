@@ -27,8 +27,16 @@ export const Navbar = ({ currentTab, setCurrentTab }) => {
       <div className="max-w-4xl mx-auto px-4 h-16 flex items-center justify-between">
         {/* Left: Branding & Couple Title */}
         <div className="flex items-center space-x-3 cursor-pointer" onClick={triggerHeartBurst}>
-          <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-rose-400 to-pink-500 flex items-center justify-center text-white shadow-md shadow-rose-500/20 active:scale-95 transition-transform">
-            <Heart className="w-5 h-5 fill-current animate-heartbeat text-white" />
+          <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-rose-400 to-pink-500 flex items-center justify-center text-white shadow-md shadow-rose-500/20 active:scale-95 transition-transform overflow-hidden border border-rose-300 dark:border-rose-700">
+            {profile?.avatar_url ? (
+              <img
+                src={profile.avatar_url}
+                alt={profile.display_name || 'My Avatar'}
+                className="w-full h-full object-cover"
+              />
+            ) : (
+              <Heart className="w-5 h-5 fill-current animate-heartbeat text-white" />
+            )}
           </div>
           <div>
             <h1 className="text-lg font-bold font-romantic text-rose-600 dark:text-rose-400 tracking-wide flex items-center gap-1.5">
@@ -37,13 +45,21 @@ export const Navbar = ({ currentTab, setCurrentTab }) => {
             </h1>
             {isPaired && partner ? (
               <div className="flex items-center space-x-1.5 text-xs text-slate-500 dark:text-slate-400">
-                <span
-                  className={`w-2 h-2 rounded-full ${
-                    isPartnerOnline
-                      ? 'bg-emerald-500 ring-2 ring-emerald-300 dark:ring-emerald-900 animate-pulse'
-                      : 'bg-slate-300 dark:bg-slate-600'
-                  }`}
-                />
+                {partner.avatar_url ? (
+                  <img
+                    src={partner.avatar_url}
+                    alt={partner.display_name || 'Partner'}
+                    className="w-4 h-4 rounded-full object-cover ring-1 ring-rose-400/60"
+                  />
+                ) : (
+                  <span
+                    className={`w-2 h-2 rounded-full ${
+                      isPartnerOnline
+                        ? 'bg-emerald-500 ring-2 ring-emerald-300 dark:ring-emerald-900 animate-pulse'
+                        : 'bg-slate-300 dark:bg-slate-600'
+                    }`}
+                  />
+                )}
                 <span className="font-medium text-slate-700 dark:text-slate-200 truncate max-w-[120px] sm:max-w-[180px]">
                   {partner.display_name || 'My Love'}
                 </span>

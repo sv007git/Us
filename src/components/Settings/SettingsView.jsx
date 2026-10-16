@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useState, useRef, useEffect } from 'react'
 import {
   Settings,
   Heart,
@@ -13,11 +13,13 @@ import {
   Info,
   Trash2,
   AlertTriangle,
+  Camera,
 } from 'lucide-react'
 import { useAuth } from '../../context/AuthContext'
 import { useCouple } from '../../context/CoupleContext'
 import { useTheme } from '../../context/ThemeContext'
 import { ConfigModal } from '../Auth/ConfigModal'
+import { AvatarCropperModal } from '../Profile/AvatarCropperModal'
 import confetti from 'canvas-confetti'
 
 export const SettingsView = () => {
@@ -26,6 +28,7 @@ export const SettingsView = () => {
   const { isDarkMode, toggleDarkMode, palette, setPalette, THEME_PALETTES } = useTheme()
 
   const [displayName, setDisplayName] = useState(profile?.display_name || '')
+  const [avatarUrl, setAvatarUrl] = useState(profile?.avatar_url || '')
   const [welcomeMessage, setWelcomeMessage] = useState(coupleSpace?.welcome_message || '')
   const [anniversaryDate, setAnniversaryDate] = useState(coupleSpace?.anniversary_date || '')
   const [isSaving, setIsSaving] = useState(false)
@@ -35,6 +38,47 @@ export const SettingsView = () => {
   const [deleteConfirmationText, setDeleteConfirmationText] = useState('')
   const [isDeleting, setIsDeleting] = useState(false)
   const [deleteError, setDeleteError] = useState(null)
+
+  // Avatar crop modal states
+  const [imageToCrop, setImageToCrop] = useState(null)
+  const [isCropperOpen, setIsCropperOpen] = useState(false)
+  const [isSavingAvatar, setIsSavingAvatar] = useState(false)
+  const fileInputRef = useRef(null)
+
+  useEffect(() => {
+    if (profile?.avatar_url) {
+      setAvatarUrl(profile.avatar_url)
+    }
+  }, [profile?.avatar_url])
+
+  const handleAvatarFileChange = (e) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    const reader = new FileReader()
+    reader.onload = () => {
+      setImageToCrop(reader.result)
+      setIsCropperOpen(true)
+    }
+    reader.readAsDataURL(file)
+    e.target.value = ''
+  }
+
+  const handleCropComplete = async (croppedDataUrl) => {
+    setIsSavingAvatar(true)
+    try {
+      await updateProfile({ avatarUrl: croppedDataUrl })
+      setAvatarUrl(croppedDataUrl)
+      setIsCropperOpen(false)
+      setImageToCrop(null)
+      confetti({ particleCount: 30, spread: 60, origin: { y: 0.6 } })
+      setSaveSuccess(true)
+      setTimeout(() => setSaveSuccess(false), 3000)
+    } catch (err) {
+      console.error('Error saving cropped avatar:', err)
+    } finally {
+      setIsSavingAvatar(false)
+    }
+  }
 
   const handleSaveProfile = async (e) => {
     e.preventDefault()
@@ -110,6 +154,45 @@ export const SettingsView = () => {
         <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-400 mb-2">
           Personal & Couple Details
         </h3>
+
+        {/* Profile Avatar with Camera Overlay & Cropper */}
+        <div className="flex flex-col items-center justify-center pt-1 pb-3 border-b border-rose-100 dark:border-slate-800">
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/*"
+            onChange={handleAvatarFileChange}
+            className="hidden"
+          />
+          <div
+            onClick={() => fileInputRef.current?.click()}
+            className="relative cursor-pointer group"
+            title="Click to upload and crop profile picture"
+          >
+            {avatarUrl ? (
+              <img
+                src={avatarUrl}
+                alt={displayName || 'Profile'}
+                className="w-24 h-24 rounded-full object-cover border-4 border-rose-400/80 shadow-xl group-hover:scale-105 transition-transform"
+              />
+            ) : (
+              <div className="w-24 h-24 rounded-full bg-gradient-to-tr from-rose-400 to-pink-500 flex items-center justify-center text-white shadow-xl shadow-rose-500/25 border-4 border-white dark:border-midnight-800 group-hover:scale-105 transition-transform">
+                <User className="w-12 h-12" />
+              </div>
+            )}
+            <div className="absolute bottom-0 right-0 p-2 rounded-full bg-rose-500 text-white shadow-md group-hover:bg-rose-600 transition">
+              <Camera className="w-4 h-4" />
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={() => fileInputRef.current?.click()}
+            className="text-xs font-semibold text-rose-500 dark:text-rose-400 mt-2.5 hover:underline flex items-center gap-1"
+          >
+            <Camera className="w-3.5 h-3.5" />
+            <span>Change Profile Picture</span>
+          </button>
+        </div>
 
         <div>
           <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">
@@ -337,6 +420,18 @@ export const SettingsView = () => {
           </div>
         </div>
       )}
+
+      {/* Avatar Cropper Modal */}
+      <AvatarCropperModal
+        isOpen={isCropperOpen}
+        imageSrc={imageToCrop}
+        isSaving={isSavingAvatar}
+        onClose={() => {
+          setIsCropperOpen(false)
+          setImageToCrop(null)
+        }}
+        onCropComplete={handleCropComplete}
+      />
     </div>
   )
 }
