@@ -10,6 +10,9 @@ import {
   Heart,
   AlertCircle,
   Volume2,
+  Minimize2,
+  Maximize2,
+  Film,
 } from 'lucide-react'
 import { useCall } from '../../context/CallContext'
 
@@ -25,6 +28,9 @@ export const CallModal = () => {
     callDuration,
     callError,
     partner,
+    isCallMinimized,
+    minimizeCall,
+    maximizeCall,
     acceptCall,
     rejectCall,
     endCall,
@@ -57,6 +63,102 @@ export const CallModal = () => {
     const mins = Math.floor(seconds / 60)
     const secs = seconds % 60
     return `${mins < 10 ? '0' : ''}${mins}:${secs < 10 ? '0' : ''}${secs}`
+  }
+
+  // Floating Picture-in-Picture mode for Watch Together / browsing
+  if (isCallMinimized && (callState === 'connected' || callState === 'connecting')) {
+    return (
+      <div className="fixed bottom-20 right-3 sm:right-6 z-50 w-44 sm:w-56 aspect-[3/4] sm:aspect-video rounded-3xl overflow-hidden shadow-2xl border-2 border-rose-500/60 bg-slate-950/95 backdrop-blur-md animate-scale-up group">
+        <div className="w-full h-full relative flex items-center justify-center bg-slate-900">
+          {isVideoCall ? (
+            <video
+              ref={remoteVideoRef}
+              autoPlay
+              playsInline
+              className="w-full h-full object-cover"
+            />
+          ) : (
+            <div className="flex flex-col items-center justify-center p-3 text-center">
+              <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-rose-500 to-pink-500 flex items-center justify-center shadow-lg shadow-rose-500/30 animate-pulse mb-1">
+                <Heart className="w-5 h-5 fill-current text-white animate-heartbeat" />
+              </div>
+              <span className="text-xs font-bold text-rose-200 truncate max-w-[120px]">
+                {partner?.display_name || 'My Love'}
+              </span>
+              <span className="text-[10px] text-emerald-400 flex items-center gap-1 mt-0.5">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping" />
+                Live Audio
+              </span>
+            </div>
+          )}
+
+          {/* Local miniature preview */}
+          {isVideoCall && (
+            <div className="absolute top-2 right-2 w-12 h-16 sm:w-16 sm:h-20 rounded-xl overflow-hidden border border-white/30 shadow-md bg-black/80 z-10">
+              <video
+                ref={localVideoRef}
+                autoPlay
+                playsInline
+                muted
+                className={`w-full h-full object-cover ${isCamOff ? 'hidden' : ''}`}
+              />
+              {isCamOff && (
+                <div className="w-full h-full flex items-center justify-center bg-slate-800">
+                  <VideoOff className="w-3 h-3 text-slate-400" />
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Top Duration Badge */}
+          <div className="absolute top-2 left-2 z-10 px-2 py-0.5 rounded-full bg-black/60 backdrop-blur-sm text-[10px] font-mono text-white flex items-center gap-1">
+            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+            <span>{formatDuration(callDuration)}</span>
+          </div>
+
+          {/* Controls Bar */}
+          <div className="absolute inset-x-0 bottom-0 p-1.5 bg-gradient-to-t from-black/95 via-black/70 to-transparent flex items-center justify-around z-20">
+            <button
+              onClick={toggleMic}
+              className={`p-1.5 rounded-full text-white transition ${
+                isMicMuted ? 'bg-amber-500' : 'bg-white/20 hover:bg-white/30'
+              }`}
+              title={isMicMuted ? 'Unmute' : 'Mute'}
+            >
+              {isMicMuted ? <MicOff className="w-3.5 h-3.5" /> : <Mic className="w-3.5 h-3.5" />}
+            </button>
+
+            {isVideoCall && (
+              <button
+                onClick={toggleCam}
+                className={`p-1.5 rounded-full text-white transition ${
+                  isCamOff ? 'bg-amber-500' : 'bg-white/20 hover:bg-white/30'
+                }`}
+                title={isCamOff ? 'Cam On' : 'Cam Off'}
+              >
+                {isCamOff ? <VideoOff className="w-3.5 h-3.5" /> : <Video className="w-3.5 h-3.5" />}
+              </button>
+            )}
+
+            <button
+              onClick={maximizeCall}
+              className="p-1.5 rounded-full bg-white/20 hover:bg-white/30 text-white transition"
+              title="Fullscreen Call"
+            >
+              <Maximize2 className="w-3.5 h-3.5" />
+            </button>
+
+            <button
+              onClick={endCall}
+              className="p-1.5 rounded-full bg-red-600 hover:bg-red-700 text-white shadow-md active:scale-95 transition"
+              title="End Call"
+            >
+              <PhoneOff className="w-3.5 h-3.5" />
+            </button>
+          </div>
+        </div>
+      </div>
+    )
   }
 
   return (
@@ -198,12 +300,21 @@ export const CallModal = () => {
               </div>
             )}
 
-            {/* Top Info Bar */}
-            <div className="absolute top-4 left-4 z-20 flex items-center space-x-2 bg-black/40 backdrop-blur-md px-3.5 py-1.5 rounded-full border border-white/10">
+            {/* Top Info Bar with Minimize Button */}
+            <div className="absolute top-4 left-4 z-20 flex items-center space-x-2 bg-black/50 backdrop-blur-md px-3.5 py-1.5 rounded-full border border-white/10">
               <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
               <span className="text-xs font-semibold">{partner?.display_name || 'My Love'}</span>
               <span className="text-xs text-slate-400">•</span>
               <span className="text-xs font-mono text-rose-300">{formatDuration(callDuration)}</span>
+              <span className="text-xs text-slate-500">|</span>
+              <button
+                onClick={minimizeCall}
+                className="hover:text-rose-400 text-slate-300 flex items-center gap-1 text-[11px] font-medium transition active:scale-95"
+                title="Minimize (Watch Movie together / Browse app)"
+              >
+                <Minimize2 className="w-3.5 h-3.5" />
+                <span className="hidden sm:inline">Watch Together Mode</span>
+              </button>
             </div>
           </div>
 
@@ -247,6 +358,15 @@ export const CallModal = () => {
                 </button>
               </>
             )}
+
+            {/* Minimize to PiP button */}
+            <button
+              onClick={minimizeCall}
+              className="p-3 rounded-full bg-white/15 hover:bg-white/25 text-white transition"
+              title="Minimize to Watch Movie"
+            >
+              <Minimize2 className="w-5 h-5" />
+            </button>
 
             {/* Hangup / End Call Button */}
             <button

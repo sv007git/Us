@@ -20,6 +20,7 @@ export const CallProvider = ({ children }) => {
   const [facingMode, setFacingMode] = useState('user')
   const [callDuration, setCallDuration] = useState(0)
   const [callError, setCallError] = useState(null)
+  const [isCallMinimized, setIsCallMinimized] = useState(false)
 
   const managerRef = useRef(null)
   const durationIntervalRef = useRef(null)
@@ -46,12 +47,14 @@ export const CallProvider = ({ children }) => {
           stopCallAudio()
         } else if (state === 'ended') {
           playCallEndTone()
+          setIsCallMinimized(false)
           setTimeout(() => {
             setCallState('idle')
             setIncomingCallData(null)
             setLocalStream(null)
             setRemoteStream(null)
             setCallDuration(0)
+            setIsCallMinimized(false)
             stopCallAudio()
           }, 2000)
         }
@@ -196,6 +199,10 @@ export const CallProvider = ({ children }) => {
         toggleMic,
         toggleCam,
         switchCam,
+        isCallMinimized,
+        setIsCallMinimized,
+        minimizeCall: () => setIsCallMinimized(true),
+        maximizeCall: () => setIsCallMinimized(false),
         dismissCallError: () => setCallError(null),
       }}
     >
