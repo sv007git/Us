@@ -37,6 +37,10 @@ export const formatSupabaseUrl = (rawUrl) => {
   return url.replace(/\/+$/, '')
 }
 
+export const DEFAULT_SUPABASE_URL = 'https://pndjoveekfntcbskwbwq.supabase.co'
+export const DEFAULT_SUPABASE_ANON_KEY =
+  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBuZGpvdmVla2ZudGNic2t3YndxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTIxMzQzMzgsImV4cCI6MjEwNzcxMDMzOH0.wW31zvnYkcBbkFUtcasF1Z8eLzg5mlWBX2c8CZU4iGo'
+
 const getCredentials = () => {
   const envUrl = typeof import.meta !== 'undefined' && import.meta.env?.VITE_SUPABASE_URL
   const envKey = typeof import.meta !== 'undefined' && import.meta.env?.VITE_SUPABASE_ANON_KEY
@@ -50,6 +54,11 @@ const getCredentials = () => {
 
   if (localUrl && localKey) {
     return { url: formatSupabaseUrl(localUrl), key: localKey.trim(), source: 'localStorage' }
+  }
+
+  // Pre-configured default credentials — zero setup required for the couple
+  if (DEFAULT_SUPABASE_URL && DEFAULT_SUPABASE_ANON_KEY) {
+    return { url: formatSupabaseUrl(DEFAULT_SUPABASE_URL), key: DEFAULT_SUPABASE_ANON_KEY.trim(), source: 'default' }
   }
 
   return { url: '', key: '', source: 'none' }

@@ -1,11 +1,10 @@
 import React, { useState } from 'react'
-import { Heart, Lock, Mail, User, ArrowRight, Sparkles, Settings } from 'lucide-react'
+import { Heart, Lock, Mail, User, ArrowRight, Sparkles } from 'lucide-react'
 import { useAuth } from '../../context/AuthContext'
-import { ConfigModal } from './ConfigModal'
 import confetti from 'canvas-confetti'
 
 export const AuthModal = () => {
-  const { signIn, signUp, resetPassword, isConfigured } = useAuth()
+  const { signIn, signUp, resetPassword } = useAuth()
   const [mode, setMode] = useState('signin') // 'signin', 'signup', 'forgot'
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -13,18 +12,11 @@ export const AuthModal = () => {
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState(null)
   const [successMsg, setSuccessMsg] = useState(null)
-  const [isConfigOpen, setIsConfigOpen] = useState(false)
 
   const handleSubmit = async (e) => {
     e.preventDefault()
     setError(null)
     setSuccessMsg(null)
-
-    if (!isConfigured) {
-      setIsConfigOpen(true)
-      return
-    }
-
     setIsLoading(true)
 
     try {
@@ -67,29 +59,6 @@ export const AuthModal = () => {
             A private romantic world created exclusively for the two of you.
           </p>
         </div>
-
-        {/* Missing Config Notification */}
-        {!isConfigured && (
-          <div className="mb-5 p-3.5 rounded-2xl bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-900 text-left">
-            <div className="flex items-start justify-between">
-              <div>
-                <p className="text-xs font-semibold text-rose-700 dark:text-rose-300">
-                  Supabase Setup Required
-                </p>
-                <p className="text-[11px] text-slate-600 dark:text-slate-400 mt-0.5">
-                  Connect your Supabase project URL and anon public key to enable secure authentication and private messaging.
-                </p>
-              </div>
-              <button
-                type="button"
-                onClick={() => setIsConfigOpen(true)}
-                className="ml-2 px-2.5 py-1 bg-rose-500 hover:bg-rose-600 text-white text-xs font-medium rounded-lg flex items-center gap-1 shrink-0"
-              >
-                <Settings className="w-3 h-3" /> Connect
-              </button>
-            </div>
-          </div>
-        )}
 
         {/* Mode Switcher */}
         <div className="flex p-1 bg-rose-100/60 dark:bg-slate-800/80 rounded-2xl mb-6">
@@ -232,19 +201,10 @@ export const AuthModal = () => {
         )}
 
         {/* Footer info */}
-        <div className="mt-6 pt-4 border-t border-rose-100 dark:border-slate-800 text-center flex items-center justify-between text-[11px] text-slate-400">
-          <span>Protected by Row Level Security</span>
-          <button
-            type="button"
-            onClick={() => setIsConfigOpen(true)}
-            className="text-rose-500 hover:underline flex items-center gap-1"
-          >
-            <Settings className="w-3 h-3" /> Config
-          </button>
+        <div className="mt-6 pt-4 border-t border-rose-100 dark:border-slate-800 text-center text-[11px] text-slate-400">
+          <span>Protected by Row Level Security & End-to-End Encryption 🔒</span>
         </div>
       </div>
-
-      <ConfigModal isOpen={isConfigOpen} onClose={() => setIsConfigOpen(false)} />
     </div>
   )
 }

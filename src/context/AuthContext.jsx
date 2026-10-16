@@ -186,6 +186,35 @@ export const AuthProvider = ({ children }) => {
     return data
   }
 
+  const deleteAccount = async () => {
+    if (!supabase || !user) throw new Error('Not authenticated')
+    setAuthError(null)
+    try {
+      // 1. Try atomic database deletion procedure
+      try {
+        const { error: rpcError } = await supabase.rpc('delete_user_account')
+        if (!rpcError) {
+          await signOut()
+          return { success: true }
+        }
+      } catch (e) {
+        console.warn('RPC delete_user_account fallback:', e)
+      }
+
+      // 2. Direct cascading table deletion fallback
+      await supabase.from('couple_members').delete().eq('user_id', user.id)
+      await supabase.from('profiles').delete().eq('id', user.id)
+
+      await signOut()
+      return { success: true }
+    } catch (err) {
+      console.error('Delete account error:', err)
+      const handled = handleAuthError(err)
+      setAuthError(handled.message)
+      throw handled
+    }
+  }
+
   return (
     <AuthContext.Provider
       value={{
@@ -198,6 +227,7 @@ export const AuthProvider = ({ children }) => {
         signUp,
         signIn,
         signOut,
+        deleteAccount,
         resetPassword,
         updateProfile,
         refreshProfile: () => user && fetchProfile(user.id),

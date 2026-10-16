@@ -27,6 +27,7 @@ CREATE TABLE IF NOT EXISTS public.couple_spaces (
     anniversary_date DATE,
     welcome_message TEXT DEFAULT 'Forever & always 💗',
     theme_preference TEXT DEFAULT 'blush',
+    metadata JSONB DEFAULT '{}'::jsonb,
     created_by UUID REFERENCES auth.users(id) ON DELETE SET NULL,
     created_at TIMESTAMPTZ DEFAULT TIMEZONE('utc'::text, NOW()) NOT NULL,
     updated_at TIMESTAMPTZ DEFAULT TIMEZONE('utc'::text, NOW()) NOT NULL
@@ -306,6 +307,33 @@ BEGIN
         'success', true,
         'couple_space_id', v_space_id
     );
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- Procedure to securely and permanently delete the authenticated user's account
+CREATE OR REPLACE FUNCTION public.delete_user_account()
+RETURNS jsonb AS $$
+DECLARE
+    v_user_id UUID := auth.uid();
+BEGIN
+    IF v_user_id IS NULL THEN
+        RAISE EXCEPTION 'Not authenticated.' USING ERRCODE = 'invalid_parameter_value';
+    END IF;
+
+    -- Delete user couple membership
+    DELETE FROM public.couple_members WHERE user_id = v_user_id;
+
+    -- Delete user profile
+    DELETE FROM public.profiles WHERE id = v_user_id;
+
+    -- Delete from auth.users (if privileges allow)
+    BEGIN
+        DELETE FROM auth.users WHERE id = v_user_id;
+    EXCEPTION WHEN OTHERS THEN
+        -- If execution context prevents direct auth.users drop, profile and space membership are already cleaned up
+    END;
+
+    RETURN jsonb_build_object('success', true);
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 

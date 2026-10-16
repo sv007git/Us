@@ -11,6 +11,8 @@ import {
   Check,
   Sparkles,
   Info,
+  Trash2,
+  AlertTriangle,
 } from 'lucide-react'
 import { useAuth } from '../../context/AuthContext'
 import { useCouple } from '../../context/CoupleContext'
@@ -19,7 +21,7 @@ import { ConfigModal } from '../Auth/ConfigModal'
 import confetti from 'canvas-confetti'
 
 export const SettingsView = () => {
-  const { user, profile, updateProfile, signOut } = useAuth()
+  const { user, profile, updateProfile, signOut, deleteAccount } = useAuth()
   const { coupleSpace, partner, updateCoupleSpace } = useCouple()
   const { isDarkMode, toggleDarkMode, palette, setPalette, THEME_PALETTES } = useTheme()
 
@@ -29,6 +31,10 @@ export const SettingsView = () => {
   const [isSaving, setIsSaving] = useState(false)
   const [saveSuccess, setSaveSuccess] = useState(false)
   const [isConfigOpen, setIsConfigOpen] = useState(false)
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false)
+  const [deleteConfirmationText, setDeleteConfirmationText] = useState('')
+  const [isDeleting, setIsDeleting] = useState(false)
+  const [deleteError, setDeleteError] = useState(null)
 
   const handleSaveProfile = async (e) => {
     e.preventDefault()
@@ -55,6 +61,24 @@ export const SettingsView = () => {
       console.error('Save settings error:', err)
     } finally {
       setIsSaving(false)
+    }
+  }
+
+  const handleDeleteAccount = async () => {
+    if (deleteConfirmationText.trim().toUpperCase() !== 'DELETE') {
+      setDeleteError('Please type DELETE to confirm.')
+      return
+    }
+
+    setIsDeleting(true)
+    setDeleteError(null)
+
+    try {
+      await deleteAccount()
+    } catch (err) {
+      console.error('Delete account error:', err)
+      setDeleteError(err.message || 'Could not delete account. Please try again.')
+      setIsDeleting(false)
     }
   }
 
@@ -221,18 +245,98 @@ export const SettingsView = () => {
         </p>
       </div>
 
-      {/* Sign Out */}
-      <div className="pt-2">
+      {/* Sign Out & Account Management */}
+      <div className="pt-2 space-y-3">
         <button
           onClick={signOut}
-          className="w-full py-3 px-4 rounded-2xl border border-red-200 dark:border-red-900/40 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/30 text-xs font-semibold flex items-center justify-center gap-2 transition"
+          className="w-full py-3 px-4 rounded-2xl border border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800/60 text-xs font-semibold flex items-center justify-center gap-2 transition"
         >
           <LogOut className="w-4 h-4" />
           <span>Sign Out of Just You & Me</span>
         </button>
+
+        {/* Danger Zone: Delete Account */}
+        <div className="p-4 rounded-3xl bg-red-50/50 dark:bg-red-950/20 border border-red-200/60 dark:border-red-900/40 space-y-2.5">
+          <div className="flex items-center gap-2 text-red-600 dark:text-red-400">
+            <AlertTriangle className="w-4 h-4" />
+            <h4 className="text-xs font-bold uppercase tracking-wider">Danger Zone</h4>
+          </div>
+          <p className="text-[11px] text-slate-500 dark:text-slate-400 leading-relaxed">
+            Deleting your account is permanent. It will immediately remove your profile and decouple your shared space.
+          </p>
+          <button
+            onClick={() => {
+              setDeleteConfirmationText('')
+              setDeleteError(null)
+              setIsDeleteModalOpen(true)
+            }}
+            className="w-full py-2.5 px-4 rounded-xl bg-red-600 hover:bg-red-700 text-white text-xs font-semibold flex items-center justify-center gap-2 shadow-sm transition active:scale-95"
+          >
+            <Trash2 className="w-3.5 h-3.5" />
+            <span>Delete Account</span>
+          </button>
+        </div>
       </div>
 
       <ConfigModal isOpen={isConfigOpen} onClose={() => setIsConfigOpen(false)} />
+
+      {/* Delete Account Confirmation Modal */}
+      {isDeleteModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm animate-fade-in">
+          <div className="w-full max-w-sm rounded-3xl bg-white dark:bg-midnight-900 border border-red-200 dark:border-red-900/60 p-6 shadow-2xl space-y-4">
+            <div className="w-12 h-12 rounded-2xl bg-red-100 dark:bg-red-950/60 text-red-600 dark:text-red-400 flex items-center justify-center mx-auto">
+              <AlertTriangle className="w-6 h-6" />
+            </div>
+
+            <div className="text-center space-y-1">
+              <h3 className="text-base font-bold text-slate-900 dark:text-white">
+                Delete Account Permanently?
+              </h3>
+              <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
+                This action <span className="font-semibold text-red-600 dark:text-red-400">cannot be undone</span>. All your data, profile details, and connection to your couple space will be permanently wiped.
+              </p>
+            </div>
+
+            {deleteError && (
+              <div className="p-2.5 rounded-xl bg-red-50 dark:bg-red-950/40 border border-red-200 text-xs text-red-600 dark:text-red-300">
+                {deleteError}
+              </div>
+            )}
+
+            <div className="space-y-1.5">
+              <label className="block text-[11px] font-medium text-slate-600 dark:text-slate-300">
+                To confirm, type <span className="font-bold text-red-600 select-all">DELETE</span> below:
+              </label>
+              <input
+                type="text"
+                value={deleteConfirmationText}
+                onChange={(e) => setDeleteConfirmationText(e.target.value)}
+                placeholder="DELETE"
+                className="w-full px-3.5 py-2 rounded-xl border border-red-300 dark:border-red-800 bg-white dark:bg-slate-800 text-xs text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-red-500"
+              />
+            </div>
+
+            <div className="flex gap-2 pt-1">
+              <button
+                type="button"
+                onClick={() => setIsDeleteModalOpen(false)}
+                disabled={isDeleting}
+                className="flex-1 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 text-xs font-semibold hover:bg-slate-100 dark:hover:bg-slate-800 transition"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleDeleteAccount}
+                disabled={isDeleting || deleteConfirmationText.trim().toUpperCase() !== 'DELETE'}
+                className="flex-1 py-2.5 rounded-xl bg-red-600 hover:bg-red-700 disabled:opacity-40 text-white text-xs font-semibold shadow-md shadow-red-600/30 transition active:scale-95"
+              >
+                {isDeleting ? 'Deleting...' : 'Delete Forever'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

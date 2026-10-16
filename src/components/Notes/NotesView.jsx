@@ -9,10 +9,15 @@ import {
   X,
   Sparkles,
   Heart,
+  Cake,
+  Droplets,
+  BookOpen,
 } from 'lucide-react'
 import { supabase } from '../../lib/supabaseClient'
 import { useAuth } from '../../context/AuthContext'
 import { useCouple } from '../../context/CoupleContext'
+import { BirthdayCalculator } from './BirthdayCalculator'
+import { CycleCalculator } from './CycleCalculator'
 import confetti from 'canvas-confetti'
 
 const NOTE_COLORS = {
@@ -26,6 +31,7 @@ export const NotesView = () => {
   const { user } = useAuth()
   const { coupleSpace, partner } = useCouple()
 
+  const [activeTab, setActiveTab] = useState('notes') // 'notes', 'birthdays', 'cycle'
   const [notes, setNotes] = useState([])
   const [loading, setLoading] = useState(true)
   const [isCreating, setIsCreating] = useState(false)
@@ -142,31 +148,97 @@ export const NotesView = () => {
       <div className="glass rounded-3xl p-5 flex items-center justify-between border border-rose-200/60 dark:border-rose-900/40">
         <div className="flex items-center space-x-3">
           <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-rose-500 to-pink-500 text-white flex items-center justify-center shadow-md shadow-rose-500/20">
-            <HeartHandshake className="w-5 h-5" />
+            {activeTab === 'birthdays' ? (
+              <Cake className="w-5 h-5" />
+            ) : activeTab === 'cycle' ? (
+              <Droplets className="w-5 h-5" />
+            ) : (
+              <HeartHandshake className="w-5 h-5" />
+            )}
           </div>
           <div>
-            <h2 className="text-lg font-bold text-slate-900 dark:text-white">Love Notes & Bucket List 💌</h2>
+            <h2 className="text-lg font-bold text-slate-900 dark:text-white">
+              {activeTab === 'birthdays'
+                ? 'Couples Birthday & Age Calculator 🎂'
+                : activeTab === 'cycle'
+                ? 'Cycle & Ovulation Hub 🌸'
+                : 'Love Notes & Bucket List 💌'}
+            </h2>
             <p className="text-xs text-slate-500 dark:text-slate-400">
-              Shared romantic thoughts, letters, and adventures to check off together.
+              {activeTab === 'birthdays'
+                ? 'Track your exact ages, upcoming birthday countdowns, and zodiac harmony.'
+                : activeTab === 'cycle'
+                ? 'Her cycle phases, ovulation window, and romantic care recommendations.'
+                : 'Shared romantic thoughts, letters, and adventures to check off together.'}
             </p>
           </div>
         </div>
 
+        {activeTab === 'notes' && (
+          <button
+            onClick={() => {
+              setEditingNoteId(null)
+              setTitle('')
+              setContent('')
+              setIsCreating(true)
+            }}
+            className="py-2 px-3.5 rounded-full bg-rose-500 hover:bg-rose-600 text-white text-xs font-semibold shadow-md shadow-rose-500/20 active:scale-95 transition flex items-center gap-1.5"
+          >
+            <Plus className="w-4 h-4" />
+            <span>New Note</span>
+          </button>
+        )}
+      </div>
+
+      {/* Sub-Tab Navigation Bar */}
+      <div className="flex p-1 bg-rose-100/60 dark:bg-slate-800/80 rounded-2xl">
         <button
-          onClick={() => {
-            setEditingNoteId(null)
-            setTitle('')
-            setContent('')
-            setIsCreating(true)
-          }}
-          className="py-2 px-3.5 rounded-full bg-rose-500 hover:bg-rose-600 text-white text-xs font-semibold shadow-md shadow-rose-500/20 active:scale-95 transition flex items-center gap-1.5"
+          type="button"
+          onClick={() => setActiveTab('notes')}
+          className={`flex-1 py-2 text-xs font-semibold rounded-xl flex items-center justify-center gap-1.5 transition ${
+            activeTab === 'notes'
+              ? 'bg-white dark:bg-midnight-800 text-rose-600 dark:text-rose-400 shadow-sm'
+              : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'
+          }`}
         >
-          <Plus className="w-4 h-4" />
-          <span>New Note</span>
+          <BookOpen className="w-3.5 h-3.5" />
+          <span>Love Notes</span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setActiveTab('birthdays')}
+          className={`flex-1 py-2 text-xs font-semibold rounded-xl flex items-center justify-center gap-1.5 transition ${
+            activeTab === 'birthdays'
+              ? 'bg-white dark:bg-midnight-800 text-rose-600 dark:text-rose-400 shadow-sm'
+              : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'
+          }`}
+        >
+          <Cake className="w-3.5 h-3.5" />
+          <span>Birthday & Age</span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setActiveTab('cycle')}
+          className={`flex-1 py-2 text-xs font-semibold rounded-xl flex items-center justify-center gap-1.5 transition ${
+            activeTab === 'cycle'
+              ? 'bg-white dark:bg-midnight-800 text-rose-600 dark:text-rose-400 shadow-sm'
+              : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'
+          }`}
+        >
+          <Droplets className="w-3.5 h-3.5" />
+          <span>Cycle & Ovulation</span>
         </button>
       </div>
 
-      {/* Create / Edit Note Form */}
+      {/* Tab View Content */}
+      {activeTab === 'birthdays' && <BirthdayCalculator />}
+      {activeTab === 'cycle' && <CycleCalculator />}
+
+      {activeTab === 'notes' && (
+        <>
+          {/* Create / Edit Note Form */}
       {isCreating && (
         <form
           onSubmit={handleSaveNote}
@@ -311,6 +383,8 @@ export const NotesView = () => {
           })}
         </div>
       )}
-    </div>
+    </>
+  )}
+</div>
   )
 }
