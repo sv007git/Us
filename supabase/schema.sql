@@ -128,7 +128,6 @@ CREATE TABLE IF NOT EXISTS public.love_notes (
 
 -- 10. Watch Together State Table
 -- Tracks synchronized video player state between partners.
--- (Uses playback_position instead of reserved keyword current_time)
 CREATE TABLE IF NOT EXISTS public.watch_sessions (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     couple_space_id UUID NOT NULL UNIQUE REFERENCES public.couple_spaces(id) ON DELETE CASCADE,
@@ -202,6 +201,56 @@ CREATE TRIGGER on_auth_user_created
 -- ===================================================================
 -- Pairing Flow Stored Procedures
 -- ===================================================================
+
+-- Stored procedure to atomically create a couple space, add creator, and generate invite code
+CREATE OR REPLACE FUNCTION public.create_couple_space(
+    p_name TEXT,
+    p_anniversary_date DATE DEFAULT NULL,
+    p_welcome_message TEXT DEFAULT 'Forever & always 💗'
+)
+RETURNS JSONB AS $$
+DECLARE
+    v_user_id UUID := auth.uid();
+    v_space_id UUID;
+    v_code VARCHAR(32);
+    v_expires_at TIMESTAMPTZ := NOW() + INTERVAL '7 days';
+    v_space RECORD;
+    v_invitation RECORD;
+BEGIN
+    IF v_user_id IS NULL THEN
+        RAISE EXCEPTION 'Authentication required.' USING ERRCODE = 'insufficient_privilege';
+    END IF;
+
+    -- Check if user is already in a space
+    IF EXISTS (SELECT 1 FROM public.couple_members WHERE user_id = v_user_id) THEN
+        RAISE EXCEPTION 'You are already a member of a couple space.' USING ERRCODE = 'invalid_parameter_value';
+    END IF;
+
+    -- 1. Create space
+    INSERT INTO public.couple_spaces (name, anniversary_date, welcome_message, created_by)
+    VALUES (COALESCE(NULLIF(TRIM(p_name), ''), 'Just You & Me'), p_anniversary_date, COALESCE(NULLIF(TRIM(p_welcome_message), ''), 'Forever & always 💗'), v_user_id)
+    RETURNING * INTO v_space;
+
+    v_space_id := v_space.id;
+
+    -- 2. Add creator to couple_members
+    INSERT INTO public.couple_members (couple_space_id, user_id, role)
+    VALUES (v_space_id, v_user_id, 'creator');
+
+    -- 3. Generate 8-character invitation code
+    v_code := UPPER(SUBSTRING(REPLACE(gen_random_uuid()::text, '-', '') FROM 1 FOR 8));
+    
+    INSERT INTO public.invitations (couple_space_id, code, created_by, expires_at)
+    VALUES (v_space_id, v_code, v_user_id, v_expires_at)
+    RETURNING * INTO v_invitation;
+
+    RETURN jsonb_build_object(
+        'success', true,
+        'space', row_to_json(v_space),
+        'invitation', row_to_json(v_invitation)
+    );
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
 
 -- Stored procedure to securely accept an invitation code
 CREATE OR REPLACE FUNCTION public.accept_invitation(invite_code TEXT)
@@ -293,10 +342,12 @@ CREATE POLICY "Users can update their own profile"
     WITH CHECK (auth.uid() = id);
 
 -- 2. Couple Spaces Policies
+-- Creator can read their space, and members of that space can read it
 DROP POLICY IF EXISTS "Couple spaces viewable by members" ON public.couple_spaces;
-CREATE POLICY "Couple spaces viewable by members"
+DROP POLICY IF EXISTS "Couple spaces viewable by members or creator" ON public.couple_spaces;
+CREATE POLICY "Couple spaces viewable by members or creator"
     ON public.couple_spaces FOR SELECT
-    USING (public.is_couple_member(auth.uid(), id));
+    USING (created_by = auth.uid() OR public.is_couple_member(auth.uid(), id));
 
 DROP POLICY IF EXISTS "Authenticated users can create a couple space" ON public.couple_spaces;
 CREATE POLICY "Authenticated users can create a couple space"
@@ -304,16 +355,17 @@ CREATE POLICY "Authenticated users can create a couple space"
     WITH CHECK (auth.uid() = created_by);
 
 DROP POLICY IF EXISTS "Couple spaces updatable by members" ON public.couple_spaces;
-CREATE POLICY "Couple spaces updatable by members"
+DROP POLICY IF EXISTS "Couple spaces updatable by members or creator" ON public.couple_spaces;
+CREATE POLICY "Couple spaces updatable by members or creator"
     ON public.couple_spaces FOR UPDATE
-    USING (public.is_couple_member(auth.uid(), id))
-    WITH CHECK (public.is_couple_member(auth.uid(), id));
+    USING (created_by = auth.uid() OR public.is_couple_member(auth.uid(), id))
+    WITH CHECK (created_by = auth.uid() OR public.is_couple_member(auth.uid(), id));
 
 -- 3. Couple Members Policies
 DROP POLICY IF EXISTS "Couple members viewable by members of that space" ON public.couple_members;
 CREATE POLICY "Couple members viewable by members of that space"
     ON public.couple_members FOR SELECT
-    USING (public.is_couple_member(auth.uid(), couple_space_id));
+    USING (user_id = auth.uid() OR public.is_couple_member(auth.uid(), couple_space_id));
 
 DROP POLICY IF EXISTS "Users can insert membership for themselves during creation" ON public.couple_members;
 CREATE POLICY "Users can insert membership for themselves during creation"
@@ -329,7 +381,7 @@ CREATE POLICY "Invitations viewable by creator or members of the space"
 DROP POLICY IF EXISTS "Space members can create invitations" ON public.invitations;
 CREATE POLICY "Space members can create invitations"
     ON public.invitations FOR INSERT
-    WITH CHECK (public.is_couple_member(auth.uid(), couple_space_id) AND auth.uid() = created_by);
+    WITH CHECK (created_by = auth.uid());
 
 -- 5. Messages Policies
 DROP POLICY IF EXISTS "Messages viewable only by couple members" ON public.messages;

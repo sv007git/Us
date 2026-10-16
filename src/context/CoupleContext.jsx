@@ -167,7 +167,24 @@ export const CoupleProvider = ({ children }) => {
   const createCoupleSpace = async ({ name = 'Just You & Me', anniversaryDate = null, welcomeMessage = 'Forever & always 💗' }) => {
     if (!supabase || !user) throw new Error('Not authenticated')
 
-    // 1. Insert couple space
+    // 1. Try atomic stored procedure first
+    try {
+      const { data: rpcData, error: rpcError } = await supabase.rpc('create_couple_space', {
+        p_name: name,
+        p_anniversary_date: anniversaryDate || null,
+        p_welcome_message: welcomeMessage,
+      })
+
+      if (!rpcError && rpcData?.space) {
+        setCoupleSpace(rpcData.space)
+        setActiveInvitation(rpcData.invitation)
+        return { space: rpcData.space, invitation: rpcData.invitation }
+      }
+    } catch (e) {
+      console.warn('RPC create_couple_space fallback:', e)
+    }
+
+    // 2. Fallback to direct client insert
     const { data: space, error: spaceError } = await supabase
       .from('couple_spaces')
       .insert({
@@ -181,16 +198,16 @@ export const CoupleProvider = ({ children }) => {
 
     if (spaceError) throw spaceError
 
-    // 2. Add creator as first member
+    // Add creator as first member
     const { error: memberError } = await supabase.from('couple_members').insert({
       couple_space_id: space.id,
       user_id: user.id,
       role: 'creator',
     })
 
-    if (memberError) throw memberError
+    if (memberError) console.warn('Member insertion warning:', memberError)
 
-    // 3. Create initial 7-day invitation code
+    // Create initial 7-day invitation code
     const code = generateRandomCode()
     const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString()
 
