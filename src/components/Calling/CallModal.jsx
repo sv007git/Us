@@ -17,8 +17,10 @@ import {
   MonitorOff,
 } from 'lucide-react'
 import { useCall } from '../../context/CallContext'
+import { useTheme } from '../../context/ThemeContext'
 
 export const CallModal = () => {
+  const { currentTheme } = useTheme()
   const {
     callState,
     isVideoCall,
@@ -87,7 +89,7 @@ export const CallModal = () => {
   // Floating Picture-in-Picture mode for Watch Together / browsing
   if (isCallMinimized && (callState === 'connected' || callState === 'connecting')) {
     return (
-      <div className="fixed bottom-20 right-3 sm:right-6 z-50 w-44 sm:w-56 aspect-[3/4] sm:aspect-video rounded-3xl overflow-hidden shadow-2xl border-2 border-rose-500/60 bg-slate-950/95 backdrop-blur-md animate-scale-up group">
+      <div className={`fixed bottom-20 right-3 sm:right-6 z-50 w-44 sm:w-56 aspect-[3/4] sm:aspect-video rounded-3xl overflow-hidden shadow-2xl border-2 ${currentTheme.border} bg-slate-950/95 backdrop-blur-md animate-scale-up group`}>
         <audio ref={remoteAudioRef} autoPlay playsInline style={{ display: 'none' }} />
 
         <div className="w-full h-full relative flex items-center justify-center bg-slate-900">
@@ -100,10 +102,10 @@ export const CallModal = () => {
             />
           ) : (
             <div className="flex flex-col items-center justify-center p-3 text-center">
-              <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-rose-500 to-pink-500 flex items-center justify-center shadow-lg shadow-rose-500/30 animate-pulse mb-1">
+              <div className={`w-10 h-10 rounded-full ${currentTheme.buttonGrad} flex items-center justify-center shadow-lg ${currentTheme.shadow} animate-pulse mb-1`}>
                 <Heart className="w-5 h-5 fill-current text-white animate-heartbeat" />
               </div>
-              <span className="text-xs font-bold text-rose-200 truncate max-w-[120px]">
+              <span className={`text-xs font-bold ${currentTheme.activeText} truncate max-w-[120px]`}>
                 {partner?.display_name || 'My Love'}
               </span>
               <span className="text-[10px] text-emerald-400 flex items-center gap-1 mt-0.5">
@@ -207,7 +209,7 @@ export const CallModal = () => {
       {callState === 'incoming' && (
         <div className="flex flex-col items-center justify-center text-center max-w-sm w-full space-y-6">
           <div className="relative">
-            <div className="w-28 h-28 rounded-full bg-gradient-to-tr from-rose-500 to-pink-500 flex items-center justify-center shadow-2xl shadow-rose-500/50 animate-pulse overflow-hidden border-2 border-rose-300">
+            <div className={`w-28 h-28 rounded-full ${currentTheme.buttonGrad} flex items-center justify-center shadow-2xl ${currentTheme.shadow} animate-pulse overflow-hidden border-2 ${currentTheme.borderLight}`}>
               {partner?.avatar_url ? (
                 <img
                   src={partner.avatar_url}
@@ -224,7 +226,7 @@ export const CallModal = () => {
           </div>
 
           <div>
-            <h2 className="text-2xl font-bold font-romantic text-rose-300">
+            <h2 className={`text-2xl font-bold font-romantic ${currentTheme.activeText}`}>
               {incomingCallData?.callerName || partner?.display_name || 'My Love'}
             </h2>
             <p className="text-sm text-slate-300 mt-1 flex items-center justify-center gap-1.5">
@@ -262,7 +264,7 @@ export const CallModal = () => {
       {/* State 2: Outgoing Call Screen */}
       {callState === 'outgoing' && (
         <div className="flex flex-col items-center justify-center text-center max-w-sm w-full space-y-6">
-          <div className="w-28 h-28 rounded-full bg-gradient-to-tr from-rose-500 to-pink-500 flex items-center justify-center shadow-2xl shadow-rose-500/40 animate-pulse overflow-hidden border-2 border-rose-300">
+          <div className={`w-28 h-28 rounded-full ${currentTheme.buttonGrad} flex items-center justify-center shadow-2xl ${currentTheme.shadow} animate-pulse overflow-hidden border-2 ${currentTheme.borderLight}`}>
             {partner?.avatar_url ? (
               <img
                 src={partner.avatar_url}
@@ -275,7 +277,7 @@ export const CallModal = () => {
           </div>
 
           <div>
-            <h2 className="text-2xl font-bold font-romantic text-rose-300">
+            <h2 className={`text-2xl font-bold font-romantic ${currentTheme.activeText}`}>
               {partner?.display_name || 'My Love'}
             </h2>
             <p className="text-sm text-slate-300 mt-1">
@@ -312,7 +314,7 @@ export const CallModal = () => {
             ) : (
               <div className="flex flex-col items-center justify-center space-y-4">
                 <div className="relative">
-                  <div className="w-32 h-32 rounded-full bg-gradient-to-tr from-rose-500 to-pink-500 flex items-center justify-center shadow-2xl shadow-rose-500/30 animate-pulse overflow-hidden border-2 border-rose-300">
+                  <div className={`w-32 h-32 rounded-full ${currentTheme.buttonGrad} flex items-center justify-center shadow-2xl ${currentTheme.shadow} animate-pulse overflow-hidden border-2 ${currentTheme.borderLight}`}>
                     {partner?.avatar_url ? (
                       <img
                         src={partner.avatar_url}
@@ -324,9 +326,9 @@ export const CallModal = () => {
                     )}
                   </div>
                   {/* Glowing Soundwave Ring */}
-                  <span className="absolute inset-0 rounded-full border-2 border-rose-400 animate-ping opacity-30" />
+                  <span className={`absolute inset-0 rounded-full border-2 ${currentTheme.border} animate-ping opacity-30`} />
                 </div>
-                <h3 className="text-xl font-bold font-romantic text-rose-300">
+                <h3 className={`text-xl font-bold font-romantic ${currentTheme.activeText}`}>
                   {partner?.display_name || 'My Love'}
                 </h3>
                 <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/20 border border-emerald-500/40 text-emerald-300 text-xs font-semibold">

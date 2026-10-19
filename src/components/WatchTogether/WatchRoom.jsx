@@ -40,6 +40,7 @@ import { WatchSyncEngine } from '../../lib/syncEngine'
 import { useAuth } from '../../context/AuthContext'
 import { useCouple } from '../../context/CoupleContext'
 import { useCall } from '../../context/CallContext'
+import { useTheme } from '../../context/ThemeContext'
 import { supabase } from '../../lib/supabaseClient'
 import { uploadCoupleMedia, getSignedMediaUrl } from '../../lib/storageHelper'
 import { VoiceRecorder } from '../Chat/VoiceRecorder'
@@ -53,6 +54,7 @@ const DEFAULT_VIDEO_URL =
   'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4'
 
 export const WatchRoom = () => {
+  const { currentTheme } = useTheme()
   const { user, profile } = useAuth()
   const { coupleSpace, partner } = useCouple()
   const {
@@ -819,9 +821,9 @@ export const WatchRoom = () => {
       />
 
       {/* Header Banner with In-Movie Call Controls */}
-      <div className="glass rounded-3xl p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 border border-rose-200/60 dark:border-rose-900/40">
+      <div className={`glass rounded-3xl p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 border ${currentTheme.border}`}>
         <div className="flex items-center space-x-3">
-          <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-rose-500 to-pink-500 text-white flex items-center justify-center shadow-md shadow-rose-500/20">
+          <div className={`w-10 h-10 rounded-2xl ${currentTheme.buttonGrad} text-white flex items-center justify-center shadow-md ${currentTheme.shadow}`}>
             <Film className="w-5 h-5" />
           </div>
           <div>
@@ -854,7 +856,7 @@ export const WatchRoom = () => {
                   startCall({ isVideo: true })
                   minimizeCall()
                 }}
-                className="px-3 py-1.5 rounded-full bg-rose-500 hover:bg-rose-600 text-white text-xs font-semibold flex items-center gap-1.5 shadow-md shadow-rose-500/20 active:scale-95 transition"
+                className={`px-3 py-1.5 rounded-full ${currentTheme.buttonGrad} text-white text-xs font-semibold flex items-center gap-1.5 shadow-md ${currentTheme.shadow} active:scale-95 transition`}
                 title="Start Video Call while watching movie"
               >
                 <Video className="w-3.5 h-3.5" />
@@ -911,7 +913,7 @@ export const WatchRoom = () => {
           )}
 
           {partnerActionToast && (
-            <div className="px-3 py-1 rounded-full bg-rose-500 text-white text-xs font-medium shadow-md shadow-rose-500/30 flex items-center gap-1.5 animate-bounce-short">
+            <div className={`px-3 py-1 rounded-full ${currentTheme.badge} text-xs font-medium shadow-md flex items-center gap-1.5 animate-bounce-short`}>
               <Users className="w-3 h-3" />
               <span>{partnerActionToast}</span>
             </div>
@@ -920,7 +922,7 @@ export const WatchRoom = () => {
       </div>
 
       {/* Main Video Player Card */}
-      <div className="relative rounded-3xl overflow-hidden bg-black shadow-2xl border border-rose-900/30 group">
+      <div className={`relative rounded-3xl overflow-hidden bg-black shadow-2xl border ${currentTheme.borderLight} group`}>
         <video
           ref={videoRef}
           src={videoUrl}
@@ -943,7 +945,7 @@ export const WatchRoom = () => {
 
         {/* IN-MOVIE FLOATING PARTNER VIDEO OVERLAY (When Call is Active) */}
         {callState === 'connected' && isCallDocked && (
-          <div className="absolute top-3 right-3 z-20 w-32 sm:w-44 aspect-[3/4] sm:aspect-video rounded-2xl overflow-hidden border-2 border-rose-400/80 shadow-2xl bg-black/90 backdrop-blur-md animate-scale-up">
+          <div className={`absolute top-3 right-3 z-20 w-32 sm:w-44 aspect-[3/4] sm:aspect-video rounded-2xl overflow-hidden border-2 ${currentTheme.border} shadow-2xl bg-black/90 backdrop-blur-md animate-scale-up`}>
             <audio ref={remoteAudioRef} autoPlay playsInline style={{ display: 'none' }} />
             {isVideoCall ? (
               <video
@@ -954,10 +956,10 @@ export const WatchRoom = () => {
               />
             ) : (
               <div className="w-full h-full flex flex-col items-center justify-center p-2 text-center text-white">
-                <div className="w-8 h-8 rounded-full bg-rose-500/80 flex items-center justify-center mb-1 animate-pulse">
+                <div className={`w-8 h-8 rounded-full ${currentTheme.buttonGrad} flex items-center justify-center mb-1 animate-pulse`}>
                   <Heart className="w-4 h-4 fill-current text-white animate-heartbeat" />
                 </div>
-                <span className="text-[11px] font-bold text-rose-200 truncate max-w-[100px]">
+                <span className={`text-[11px] font-bold ${currentTheme.activeText} truncate max-w-[100px]`}>
                   {partner?.display_name || 'My Love'}
                 </span>
                 <span className="text-[9px] text-emerald-400 font-mono">
@@ -996,7 +998,7 @@ export const WatchRoom = () => {
 
         {videoError && (
           <div className="absolute inset-0 bg-black/80 flex flex-col items-center justify-center p-6 text-center text-white">
-            <Info className="w-8 h-8 text-rose-500 mb-2" />
+            <Info className={`w-8 h-8 ${currentTheme.activeText} mb-2`} />
             <p className="text-sm font-semibold">{videoError}</p>
             <p className="text-xs text-slate-400 max-w-sm mt-1">
               Please check that the URL points to a direct video file (.mp4, .webm) and allows CORS playback.
@@ -1006,7 +1008,7 @@ export const WatchRoom = () => {
                 setVideoUrl(DEFAULT_VIDEO_URL)
                 setVideoError(null)
               }}
-              className="mt-4 px-4 py-1.5 rounded-full bg-rose-500 text-xs font-semibold text-white hover:bg-rose-600 transition"
+              className={`mt-4 px-4 py-1.5 rounded-full ${currentTheme.buttonGrad} text-xs font-semibold text-white transition`}
             >
               Play Sample Video
             </button>
@@ -1025,7 +1027,7 @@ export const WatchRoom = () => {
               step="0.1"
               value={currentTime}
               onChange={handleSeek}
-              className="flex-1 h-1.5 bg-white/20 rounded-lg appearance-none cursor-pointer accent-rose-500"
+              className="flex-1 h-1.5 bg-white/20 rounded-lg appearance-none cursor-pointer accent-current"
             />
             <span>{formatSeconds(duration)}</span>
           </div>
@@ -1074,7 +1076,7 @@ export const WatchRoom = () => {
               <button
                 onClick={handleCaptureScreenshot}
                 disabled={isCapturing}
-                className="px-3 py-1.5 rounded-full bg-rose-500/90 hover:bg-rose-500 text-white text-xs font-semibold flex items-center gap-1.5 shadow-md shadow-rose-500/30 active:scale-95 transition"
+                className={`px-3 py-1.5 rounded-full ${currentTheme.buttonGrad} text-white text-xs font-semibold flex items-center gap-1.5 shadow-md ${currentTheme.shadow} active:scale-95 transition`}
                 title="Take a screenshot of this movie scene to share with your partner"
               >
                 <Camera className="w-3.5 h-3.5" />
@@ -1090,7 +1092,7 @@ export const WatchRoom = () => {
                   onClick={() => handleSpeedChange(rate)}
                   className={`px-2 py-0.5 rounded-md transition ${
                     playbackRate === rate
-                      ? 'bg-rose-500 font-bold text-white'
+                      ? `${currentTheme.buttonGrad} font-bold text-white`
                       : 'text-slate-400 hover:text-white'
                   }`}
                 >
@@ -1113,13 +1115,13 @@ export const WatchRoom = () => {
 
       {/* Partner Local Movie Announcement Card */}
       {partnerLocalMovieNotice && (
-        <div className="glass rounded-3xl p-3.5 border border-rose-300 dark:border-rose-800 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 animate-fade-in bg-gradient-to-r from-rose-500/10 via-pink-500/10 to-purple-500/10">
+        <div className={`glass rounded-3xl p-3.5 border ${currentTheme.border} flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 animate-fade-in ${currentTheme.softBg}`}>
           <div className="flex items-center gap-2.5 overflow-hidden">
-            <div className="w-9 h-9 rounded-2xl bg-rose-500 text-white flex items-center justify-center shrink-0 shadow-md">
+            <div className={`w-9 h-9 rounded-2xl ${currentTheme.buttonGrad} text-white flex items-center justify-center shrink-0 shadow-md`}>
               <Clapperboard className="w-5 h-5" />
             </div>
             <div className="truncate">
-              <span className="text-xs font-bold text-rose-600 dark:text-rose-400 block truncate">
+              <span className={`text-xs font-bold ${currentTheme.activeText} block truncate`}>
                 {partnerLocalMovieNotice.senderName} loaded a local movie:
               </span>
               <span className="text-xs text-slate-800 dark:text-slate-100 font-semibold block truncate">
@@ -1131,7 +1133,7 @@ export const WatchRoom = () => {
             <button
               type="button"
               onClick={() => localVideoInputRef.current?.click()}
-              className="flex-1 sm:flex-none px-3.5 py-1.5 rounded-xl bg-rose-500 hover:bg-rose-600 text-white text-xs font-semibold shadow-md active:scale-95 transition"
+              className={`flex-1 sm:flex-none px-3.5 py-1.5 rounded-xl ${currentTheme.buttonGrad} text-white text-xs font-semibold shadow-md active:scale-95 transition`}
             >
               Select My Copy to Sync
             </button>
@@ -1147,10 +1149,10 @@ export const WatchRoom = () => {
       )}
 
       {/* 1. Stream Movie from Local Device Card */}
-      <div className="glass rounded-3xl p-4 border border-rose-200/60 dark:border-rose-900/40 space-y-3">
+      <div className={`glass rounded-3xl p-4 border ${currentTheme.border} space-y-3`}>
         <div className="flex items-center justify-between">
           <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 flex items-center gap-1.5">
-            <Film className="w-3.5 h-3.5 text-rose-500" /> Play & Stream Movie from Local Device
+            <Film className={`w-3.5 h-3.5 ${currentTheme.activeText}`} /> Play & Stream Movie from Local Device
           </h3>
           {localMovieFile && (
             <span className="text-[11px] font-semibold text-emerald-600 dark:text-emerald-400 flex items-center gap-1">
@@ -1164,7 +1166,7 @@ export const WatchRoom = () => {
           <button
             type="button"
             onClick={() => localVideoInputRef.current?.click()}
-            className="flex-1 min-w-[150px] py-2.5 px-3.5 rounded-2xl bg-gradient-to-r from-rose-500 to-pink-500 hover:opacity-95 text-white text-xs font-bold shadow-md shadow-rose-500/20 active:scale-95 transition flex items-center justify-center gap-2"
+            className={`flex-1 min-w-[150px] py-2.5 px-3.5 rounded-2xl ${currentTheme.buttonGrad} hover:opacity-95 text-white text-xs font-bold shadow-md ${currentTheme.shadow} active:scale-95 transition flex items-center justify-center gap-2`}
           >
             <FolderPlus className="w-4 h-4" />
             <span>{localMovieFile ? 'Change Local Movie File' : 'Choose Movie from Device'}</span>
@@ -1176,7 +1178,7 @@ export const WatchRoom = () => {
               onClick={isScreenSharing ? stopScreenShare : handleStartLiveStream}
               className={`flex-1 min-w-[150px] py-2.5 px-3.5 rounded-2xl text-xs font-bold shadow-md active:scale-95 transition flex items-center justify-center gap-2 ${
                 isScreenSharing
-                  ? 'bg-purple-600 text-white ring-2 ring-purple-300'
+                  ? `${currentTheme.badge} ring-2 ${currentTheme.ring}`
                   : 'bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700'
               }`}
             >
@@ -1187,7 +1189,7 @@ export const WatchRoom = () => {
                 </>
               ) : (
                 <>
-                  <Radio className="w-4 h-4 text-rose-500" />
+                  <Radio className={`w-4 h-4 ${currentTheme.activeText}`} />
                   <span>Live Stream Screen & Audio</span>
                 </>
               )}
@@ -1197,7 +1199,7 @@ export const WatchRoom = () => {
 
         {/* Local Active Movie Info & Actions */}
         {localMovieFile && (
-          <div className="p-3 rounded-2xl bg-rose-50 dark:bg-slate-800/80 border border-rose-200 dark:border-slate-700 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 animate-fade-in">
+          <div className={`p-3 rounded-2xl ${currentTheme.softBg} border ${currentTheme.borderLight} flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 animate-fade-in`}>
             <div className="truncate max-w-full">
               <span className="text-xs font-bold text-slate-800 dark:text-slate-100 block truncate">
                 🎬 {localMovieFile.name}
@@ -1212,7 +1214,7 @@ export const WatchRoom = () => {
                 type="button"
                 onClick={handleUploadMovieToVault}
                 disabled={isUploadingLocalMovie}
-                className="flex-1 sm:flex-none px-3 py-1.5 rounded-xl bg-white dark:bg-slate-700 border border-rose-300 dark:border-slate-600 text-rose-600 dark:text-rose-300 text-xs font-semibold hover:bg-rose-50 transition flex items-center justify-center gap-1.5 disabled:opacity-50"
+                className={`flex-1 sm:flex-none px-3 py-1.5 rounded-xl bg-white dark:bg-slate-700 border ${currentTheme.border} ${currentTheme.activeText} text-xs font-semibold ${currentTheme.softHover} transition flex items-center justify-center gap-1.5 disabled:opacity-50`}
               >
                 <Upload className="w-3.5 h-3.5" />
                 <span>{isUploadingLocalMovie ? `Uploading ${localMovieUploadProgress}%...` : 'Upload to Cloud Vault'}</span>
@@ -1231,9 +1233,9 @@ export const WatchRoom = () => {
       </div>
 
       {/* 2. Video Source Picker & URL input */}
-      <div className="glass rounded-3xl p-4 border border-rose-200/60 dark:border-rose-900/40 space-y-3">
+      <div className={`glass rounded-3xl p-4 border ${currentTheme.border} space-y-3`}>
         <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 flex items-center gap-1.5">
-          <LinkIcon className="w-3.5 h-3.5 text-rose-500" /> Play Video by Direct HTTPS URL
+          <LinkIcon className={`w-3.5 h-3.5 ${currentTheme.activeText}`} /> Play Video by Direct HTTPS URL
         </h3>
 
         <form onSubmit={handleLoadUrl} className="flex gap-2">
@@ -1242,11 +1244,11 @@ export const WatchRoom = () => {
             value={inputUrl}
             onChange={(e) => setInputUrl(e.target.value)}
             placeholder="Paste direct HTTPS video URL (e.g. https://.../movie.mp4)"
-            className="flex-1 px-3.5 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-rose-500"
+            className={`flex-1 px-3.5 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 ${currentTheme.ring}`}
           />
           <button
             type="submit"
-            className="px-4 py-2 rounded-xl bg-rose-500 hover:bg-rose-600 text-white text-xs font-semibold shadow-md shadow-rose-500/20 active:scale-95 transition"
+            className={`px-4 py-2 rounded-xl ${currentTheme.buttonGrad} text-white text-xs font-semibold shadow-md ${currentTheme.shadow} active:scale-95 transition`}
           >
             Load
           </button>
@@ -1254,7 +1256,7 @@ export const WatchRoom = () => {
 
         {/* Uploaded Vault Videos Quick-Select */}
         {vaultVideos.length > 0 && (
-          <div className="pt-2 border-t border-rose-100 dark:border-slate-800">
+          <div className="pt-2 border-t border-slate-100 dark:border-slate-800">
             <span className="text-[11px] font-medium text-slate-400 block mb-1.5">
               Or pick from videos shared in your chat vault:
             </span>
@@ -1266,7 +1268,7 @@ export const WatchRoom = () => {
                     setVideoUrl(v.media_url)
                     setLocalMovieFile(null)
                   }}
-                  className="px-2.5 py-1 rounded-lg bg-rose-50 dark:bg-slate-800 text-rose-600 dark:text-rose-400 hover:bg-rose-100 text-xs font-medium truncate max-w-[200px]"
+                  className={`px-2.5 py-1 rounded-lg ${currentTheme.softBg} ${currentTheme.activeText} ${currentTheme.softHover} text-xs font-medium truncate max-w-[200px]`}
                 >
                   🎬 {v.content || 'Uploaded Video'}
                 </button>
@@ -1279,21 +1281,21 @@ export const WatchRoom = () => {
       {/* ===================================================================
           COMPANION CHAT: SCREENSHOTS, VOICE NOTES, GIFS & WHATSAPP REACTIONS
          =================================================================== */}
-      <div className="glass rounded-3xl p-4 border border-rose-200/60 dark:border-rose-900/40 space-y-3">
+      <div className={`glass rounded-3xl p-4 border ${currentTheme.border} space-y-3`}>
         <div className="flex items-center justify-between">
           <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 flex items-center gap-1.5">
-            <Heart className="w-3.5 h-3.5 text-rose-500 fill-current" /> Movie Night Chat & Reactions
+            <Heart className={`w-3.5 h-3.5 ${currentTheme.activeText} fill-current`} /> Movie Night Chat & Reactions
           </h3>
           <span className="text-[11px] text-slate-400">
-            Watching with <span className="font-semibold text-rose-500">{partner?.display_name || 'Partner'}</span>
+            Watching with <span className={`font-semibold ${currentTheme.activeText}`}>{partner?.display_name || 'Partner'}</span>
           </span>
         </div>
 
         {/* Messages Stream */}
-        <div className="h-64 sm:h-72 overflow-y-auto space-y-3 p-3 rounded-2xl bg-white/60 dark:bg-slate-900/60 border border-rose-100 dark:border-slate-800 text-xs">
+        <div className="h-64 sm:h-72 overflow-y-auto space-y-3 p-3 rounded-2xl bg-white/60 dark:bg-slate-900/60 border border-slate-200/50 dark:border-slate-800 text-xs">
           {roomMessages.length === 0 ? (
             <div className="text-center py-12 text-slate-400 space-y-2">
-              <Camera className="w-8 h-8 text-rose-300 mx-auto animate-pulse" />
+              <Camera className={`w-8 h-8 ${currentTheme.activeText} mx-auto animate-pulse opacity-70`} />
               <p className="font-medium text-slate-500 dark:text-slate-400">No reactions yet!</p>
               <p className="text-[11px]">
                 Click 📸 <strong>Capture Moment</strong> to snap screenshots of your favorite scenes, send voice notes, and react!
@@ -1310,7 +1312,7 @@ export const WatchRoom = () => {
                   className={`flex flex-col ${isOwn ? 'items-end' : 'items-start'} group relative`}
                 >
                   <div className="flex items-baseline gap-1 text-[10px] text-slate-400 px-1 mb-0.5">
-                    <span className="font-semibold text-rose-500 dark:text-rose-400">
+                    <span className={`font-semibold ${currentTheme.activeText}`}>
                       {isOwn ? 'You' : msg.senderName}
                     </span>
                     <span>•</span>
@@ -1320,8 +1322,8 @@ export const WatchRoom = () => {
                   <div
                     className={`max-w-[85%] sm:max-w-md rounded-2xl p-2.5 shadow-sm relative transition ${
                       isOwn
-                        ? 'bg-gradient-to-tr from-rose-500 to-pink-500 text-white rounded-tr-none'
-                        : 'bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 border border-rose-100 dark:border-slate-700 rounded-tl-none'
+                        ? `${currentTheme.bubbleOwn} text-white rounded-tr-none`
+                        : 'bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 border border-slate-200 dark:border-slate-700 rounded-tl-none'
                     }`}
                   >
                     {/* Render Image or Screenshot Attachment */}
@@ -1337,10 +1339,10 @@ export const WatchRoom = () => {
                           <button
                             type="button"
                             onClick={() => handleJumpToScene(msg.media_metadata.timestamp)}
-                            className="absolute bottom-2 left-2 px-2 py-0.5 rounded-full bg-black/70 text-white text-[10px] font-mono flex items-center gap-1 hover:bg-rose-600 transition"
+                            className="absolute bottom-2 left-2 px-2 py-0.5 rounded-full bg-black/70 text-white text-[10px] font-mono flex items-center gap-1 hover:opacity-90 transition"
                             title="Click to jump to this movie scene!"
                           >
-                            <Camera className="w-3 h-3 text-rose-300" />
+                            <Camera className={`w-3 h-3 ${currentTheme.activeText}`} />
                             <span>Scene at {msg.media_metadata.timestamp} (Jump)</span>
                           </button>
                         )}
@@ -1354,7 +1356,7 @@ export const WatchRoom = () => {
                           type="button"
                           onClick={() => handleTogglePlayAudio(msg.id, msg.media_url)}
                           className={`w-8 h-8 rounded-full flex items-center justify-center transition active:scale-95 ${
-                            isOwn ? 'bg-white text-rose-600' : 'bg-rose-500 text-white'
+                            isOwn ? `bg-white ${currentTheme.activeText}` : `${currentTheme.buttonGrad} text-white`
                           }`}
                         >
                           {playingAudioId === msg.id ? (
@@ -1366,7 +1368,7 @@ export const WatchRoom = () => {
                         <div className="flex-1">
                           <div className="h-1.5 w-full bg-black/20 rounded-full overflow-hidden">
                             <div
-                              className={`h-full ${isOwn ? 'bg-white' : 'bg-rose-500'} transition-all`}
+                              className={`h-full ${isOwn ? 'bg-white' : currentTheme.buttonGrad} transition-all`}
                               style={{ width: `${playingAudioId === msg.id ? audioProgress : 0}%` }}
                             />
                           </div>
@@ -1415,7 +1417,7 @@ export const WatchRoom = () => {
                               onClick={() => handleToggleReaction(msg.id, emoji)}
                               className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[11px] shadow-sm transition active:scale-95 ${
                                 hasReacted
-                                  ? 'bg-rose-100 text-rose-700 dark:bg-rose-950/80 dark:text-rose-300 font-bold border border-rose-300 dark:border-rose-800'
+                                  ? `${currentTheme.badge} font-bold border ${currentTheme.border}`
                                   : 'bg-white/80 dark:bg-slate-700 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-600'
                               }`}
                             >
@@ -1437,7 +1439,7 @@ export const WatchRoom = () => {
                       }
                       className={`absolute -top-3 ${
                         isOwn ? '-left-3' : '-right-3'
-                      } p-1 rounded-full bg-white dark:bg-slate-800 border border-rose-200 dark:border-slate-700 shadow-md text-slate-400 hover:text-rose-500 opacity-80 sm:opacity-0 group-hover:opacity-100 transition`}
+                      } p-1 rounded-full bg-white dark:bg-slate-800 border ${currentTheme.borderLight} shadow-md text-slate-400 hover:${currentTheme.activeText} opacity-80 sm:opacity-0 group-hover:opacity-100 transition`}
                       title="React to message"
                     >
                       <Smile className="w-3.5 h-3.5" />
@@ -1448,14 +1450,14 @@ export const WatchRoom = () => {
                       <div
                         className={`absolute bottom-full mb-1 z-30 ${
                           isOwn ? 'right-0' : 'left-0'
-                        } flex items-center gap-1 p-1 bg-white dark:bg-slate-800 border border-rose-200 dark:border-rose-900/50 rounded-full shadow-2xl animate-scale-up`}
+                        } flex items-center gap-1 p-1 bg-white dark:bg-slate-800 border ${currentTheme.border} rounded-full shadow-2xl animate-scale-up`}
                       >
                         {REACTION_EMOJIS.map((emoji) => (
                           <button
                             key={emoji}
                             type="button"
                             onClick={() => handleToggleReaction(msg.id, emoji)}
-                            className="p-1 rounded-full hover:bg-rose-50 dark:hover:bg-slate-700 text-base hover:scale-125 transition-transform"
+                            className={`p-1 rounded-full ${currentTheme.softHover} text-base hover:scale-125 transition-transform`}
                           >
                             {emoji}
                           </button>
@@ -1472,21 +1474,21 @@ export const WatchRoom = () => {
 
         {/* Attachment Preview Card (Screenshot or selected image) */}
         {pendingAttachment && (
-          <div className="p-2.5 rounded-2xl bg-rose-50 dark:bg-slate-800/80 border border-rose-200 dark:border-slate-700 flex items-center justify-between gap-3 animate-fade-in">
+          <div className={`p-2.5 rounded-2xl ${currentTheme.softBg} border ${currentTheme.border} flex items-center justify-between gap-3 animate-fade-in`}>
             <div className="flex items-center gap-2.5 overflow-hidden">
               {pendingAttachment.previewUrl ? (
                 <img
                   src={pendingAttachment.previewUrl}
                   alt="Attachment preview"
-                  className="w-12 h-12 object-cover rounded-xl border border-rose-300 dark:border-slate-600 shrink-0"
+                  className={`w-12 h-12 object-cover rounded-xl border ${currentTheme.border} shrink-0`}
                 />
               ) : (
-                <div className="w-10 h-10 rounded-xl bg-rose-200 dark:bg-rose-900/50 flex items-center justify-center shrink-0">
-                  <Camera className="w-5 h-5 text-rose-600 dark:text-rose-300" />
+                <div className={`w-10 h-10 rounded-xl ${currentTheme.softBg} flex items-center justify-center shrink-0`}>
+                  <Camera className={`w-5 h-5 ${currentTheme.activeText}`} />
                 </div>
               )}
               <div className="truncate">
-                <span className="text-xs font-bold text-rose-600 dark:text-rose-400 block truncate">
+                <span className={`text-xs font-bold ${currentTheme.activeText} block truncate`}>
                   {pendingAttachment.type === 'screenshot' ? '📸 Movie Screenshot' : '🖼️ Image Attachment'}
                 </span>
                 <span className="text-[11px] text-slate-500 dark:text-slate-400 truncate block">
@@ -1498,7 +1500,7 @@ export const WatchRoom = () => {
             <button
               type="button"
               onClick={() => setPendingAttachment(null)}
-              className="p-1 rounded-full hover:bg-rose-200/50 dark:hover:bg-slate-700 text-slate-400 hover:text-slate-600 transition"
+              className="p-1 rounded-full hover:bg-slate-200/50 dark:hover:bg-slate-700 text-slate-400 hover:text-slate-600 transition"
               title="Remove attachment"
             >
               <X className="w-4 h-4" />
@@ -1525,7 +1527,7 @@ export const WatchRoom = () => {
                 type="button"
                 onClick={handleCaptureScreenshot}
                 disabled={isCapturing}
-                className="p-2 rounded-xl border border-rose-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-rose-500 hover:bg-rose-50 dark:hover:bg-slate-700 transition"
+                className={`p-2 rounded-xl border ${currentTheme.border} bg-white dark:bg-slate-800 ${currentTheme.activeText} ${currentTheme.softHover} transition`}
                 title="Capture screenshot from movie"
               >
                 <Camera className="w-4 h-4" />
@@ -1535,7 +1537,7 @@ export const WatchRoom = () => {
               <button
                 type="button"
                 onClick={() => fileInputRef.current?.click()}
-                className="p-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-500 hover:text-rose-500 hover:bg-slate-50 dark:hover:bg-slate-700 transition"
+                className={`p-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-500 hover:${currentTheme.activeText} hover:bg-slate-50 dark:hover:bg-slate-700 transition`}
                 title="Attach an image"
               >
                 <Paperclip className="w-4 h-4" />
@@ -1545,7 +1547,7 @@ export const WatchRoom = () => {
               <button
                 type="button"
                 onClick={() => setIsVoiceRecorderOpen(true)}
-                className="p-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-500 hover:text-rose-500 hover:bg-slate-50 dark:hover:bg-slate-700 transition"
+                className={`p-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-500 hover:${currentTheme.activeText} hover:bg-slate-50 dark:hover:bg-slate-700 transition`}
                 title="Record a voice note"
               >
                 <Mic className="w-4 h-4" />
@@ -1555,10 +1557,10 @@ export const WatchRoom = () => {
               <button
                 type="button"
                 onClick={() => setIsGifPickerOpen(true)}
-                className="px-2.5 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-bold text-slate-600 dark:text-slate-300 hover:text-rose-500 hover:bg-slate-50 dark:hover:bg-slate-700 transition flex items-center gap-1"
+                className={`px-2.5 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-bold text-slate-600 dark:text-slate-300 hover:${currentTheme.activeText} hover:bg-slate-50 dark:hover:bg-slate-700 transition flex items-center gap-1`}
                 title="Send a GIF or sticker"
               >
-                <Sparkles className="w-3.5 h-3.5 text-rose-400" />
+                <Sparkles className={`w-3.5 h-3.5 ${currentTheme.activeText}`} />
                 <span>GIF</span>
               </button>
 
@@ -1572,14 +1574,14 @@ export const WatchRoom = () => {
                     ? 'Add a caption for this screenshot...'
                     : 'Send note, comment or reaction...'
                 }
-                className="flex-1 px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-rose-500"
+                className={`flex-1 px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 ${currentTheme.ring}`}
               />
 
               {/* Send Button */}
               <button
                 type="submit"
                 disabled={isSending || (!chatText.trim() && !pendingAttachment)}
-                className="p-2 rounded-xl bg-gradient-to-tr from-rose-500 to-pink-500 text-white hover:opacity-95 disabled:opacity-40 transition shadow-md shadow-rose-500/20 active:scale-95"
+                className={`p-2 rounded-xl ${currentTheme.buttonGrad} text-white hover:opacity-95 disabled:opacity-40 transition shadow-md ${currentTheme.shadow} active:scale-95`}
               >
                 <Send className="w-4 h-4" />
               </button>

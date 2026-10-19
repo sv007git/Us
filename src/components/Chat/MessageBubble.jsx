@@ -53,6 +53,13 @@ export const MessageBubble = ({
   } = message
 
   const formattedTime = created_at ? format(new Date(created_at), 'h:mm a') : ''
+  const isRead = Boolean(
+    message.is_read === true ||
+    message.read_at != null ||
+    media_metadata?.is_read === true ||
+    (Array.isArray(media_metadata?.read_by) &&
+      media_metadata.read_by.some((uid) => uid !== message.sender_id))
+  )
   const reactions = media_metadata?.reactions || {}
   const reactionEntries = Object.entries(reactions).filter(
     ([_, users]) => Array.isArray(users) && users.length > 0
@@ -131,7 +138,7 @@ export const MessageBubble = ({
                   setShowReactionPicker((prev) => !prev)
                   setShowMenu(false)
                 }}
-                className="p-1.5 rounded-full bg-white dark:bg-midnight-800 border border-slate-200 dark:border-slate-700 shadow-sm text-slate-500 hover:text-rose-500 active:scale-95 transition"
+                className={`p-1.5 rounded-full bg-white dark:bg-midnight-800 border border-slate-200 dark:border-slate-700 shadow-sm text-slate-500 hover:${currentTheme.activeText} active:scale-95 transition`}
                 title="React to sticker"
                 aria-label="React to sticker"
               >
@@ -152,7 +159,16 @@ export const MessageBubble = ({
           <div className="text-5xl sm:text-6xl p-1 select-none animate-bounce-short hover:scale-110 transition-transform">
             {content}
           </div>
-          <span className="text-[10px] text-slate-400 mb-1">{formattedTime}</span>
+          <span className="inline-flex items-center gap-1 text-[10px] text-slate-400 mb-1">
+            <span>{formattedTime}</span>
+            {isOwn && (
+              isRead ? (
+                <CheckCheck className="w-3.5 h-3.5 text-sky-400 fill-current" title="Read" />
+              ) : (
+                <Check className="w-3.5 h-3.5 text-slate-400" title="Sent" />
+              )
+            )}
+          </span>
 
           {!isOwn && (
             <div className="flex items-center gap-1 opacity-75 sm:opacity-0 group-hover:opacity-100 transition mb-1">
@@ -162,7 +178,7 @@ export const MessageBubble = ({
                   setShowReactionPicker((prev) => !prev)
                   setShowMenu(false)
                 }}
-                className="p-1.5 rounded-full bg-white dark:bg-midnight-800 border border-slate-200 dark:border-slate-700 shadow-sm text-slate-500 hover:text-rose-500 active:scale-95 transition"
+                className={`p-1.5 rounded-full bg-white dark:bg-midnight-800 border border-slate-200 dark:border-slate-700 shadow-sm text-slate-500 hover:${currentTheme.activeText} active:scale-95 transition`}
                 title="React to sticker"
                 aria-label="React to sticker"
               >
@@ -428,21 +444,48 @@ export const MessageBubble = ({
               </div>
             )}
 
-            {/* 5. Text Content */}
+            {/* 5. Text Content + Timestamp & Status in a single line layout */}
             {content && message_type !== 'sticker' && (
-              <p className="whitespace-pre-wrap leading-relaxed select-text">{content}</p>
+              <div className="select-text leading-relaxed">
+                <div className="flex flex-wrap items-end justify-between gap-x-2.5 gap-y-0.5">
+                  <span className="whitespace-pre-wrap break-words">{content}</span>
+                  <span
+                    className={`inline-flex items-center gap-1 text-[10px] select-none ml-auto shrink-0 leading-none pb-0.5 ${
+                      isOwn ? 'text-white/85' : 'text-slate-400 dark:text-slate-500'
+                    }`}
+                  >
+                    {is_edited && <span className="italic text-[9px] opacity-80">edited</span>}
+                    <span>{formattedTime}</span>
+                    {isOwn && (
+                      isRead ? (
+                        <CheckCheck className="w-3.5 h-3.5 text-sky-200 fill-current" title="Read" />
+                      ) : (
+                        <Check className="w-3.5 h-3.5 text-white/80" title="Sent" />
+                      )
+                    )}
+                  </span>
+                </div>
+              </div>
             )}
 
-            {/* Meta footer: Timestamp + Edited + Status */}
-            <div
-              className={`flex items-center justify-end space-x-1 text-[10px] mt-1 select-none ${
-                isOwn ? 'text-white/80' : 'text-slate-400 dark:text-slate-500'
-              }`}
-            >
-              {is_edited && <span className="italic">edited</span>}
-              <span>{formattedTime}</span>
-              {isOwn && <CheckCheck className="w-3.5 h-3.5 text-white/90" />}
-            </div>
+            {/* Meta footer for media-only messages without text or audio notes */}
+            {(!content || message_type === 'audio') && message_type !== 'sticker' && (
+              <div
+                className={`flex items-center justify-end space-x-1 text-[10px] mt-1 select-none ${
+                  isOwn ? 'text-white/85' : 'text-slate-400 dark:text-slate-500'
+                }`}
+              >
+                {is_edited && <span className="italic text-[9px] opacity-80">edited</span>}
+                <span>{formattedTime}</span>
+                {isOwn && (
+                  isRead ? (
+                    <CheckCheck className="w-3.5 h-3.5 text-sky-200 fill-current" title="Read" />
+                  ) : (
+                    <Check className="w-3.5 h-3.5 text-white/80" title="Sent" />
+                  )
+                )}
+              </div>
+            )}
           </div>
 
           {/* WhatsApp-Style Reaction Badges Row */}

@@ -35,7 +35,7 @@ import confetti from 'canvas-confetti'
 export const SettingsView = () => {
   const { user, profile, updateProfile, signOut, deleteAccount } = useAuth()
   const { coupleSpace, partner, updateCoupleSpace } = useCouple()
-  const { isDarkMode, toggleDarkMode, palette, setPalette, THEME_PALETTES } = useTheme()
+  const { isDarkMode, toggleDarkMode, palette, setPalette, THEME_PALETTES, currentTheme } = useTheme()
 
   const [displayName, setDisplayName] = useState(profile?.display_name || '')
   const [avatarUrl, setAvatarUrl] = useState(profile?.avatar_url || '')
@@ -174,9 +174,9 @@ export const SettingsView = () => {
   return (
     <div className="flex-1 max-w-2xl mx-auto w-full p-4 pb-20 space-y-5 animate-fade-in">
       {/* Header */}
-      <div className="glass rounded-3xl p-5 flex items-center justify-between border border-rose-200/60 dark:border-rose-900/40">
+      <div className={`glass rounded-3xl p-5 flex items-center justify-between border ${currentTheme.border}`}>
         <div className="flex items-center space-x-3">
-          <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-rose-500 to-pink-500 text-white flex items-center justify-center shadow-md shadow-rose-500/20">
+          <div className={`w-10 h-10 rounded-2xl ${currentTheme.buttonGrad} text-white flex items-center justify-center shadow-md ${currentTheme.shadow}`}>
             <Settings className="w-5 h-5" />
           </div>
           <div>
@@ -195,13 +195,13 @@ export const SettingsView = () => {
       )}
 
       {/* Profile & Couple Settings Form */}
-      <form onSubmit={handleSaveProfile} className="glass rounded-3xl p-5 border border-rose-200/60 dark:border-rose-900/40 space-y-4">
+      <form onSubmit={handleSaveProfile} className={`glass rounded-3xl p-5 border ${currentTheme.border} space-y-4`}>
         <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-400 mb-2">
           Personal & Couple Details
         </h3>
 
         {/* Profile Avatar with Camera Overlay & Cropper */}
-        <div className="flex flex-col items-center justify-center pt-1 pb-3 border-b border-rose-100 dark:border-slate-800">
+        <div className={`flex flex-col items-center justify-center pt-1 pb-3 border-b ${currentTheme.borderLight}`}>
           <input
             ref={fileInputRef}
             type="file"
@@ -218,21 +218,21 @@ export const SettingsView = () => {
               <img
                 src={avatarUrl}
                 alt={displayName || 'Profile'}
-                className="w-24 h-24 rounded-full object-cover border-4 border-rose-400/80 shadow-xl group-hover:scale-105 transition-transform"
+                className={`w-24 h-24 rounded-full object-cover border-4 ${currentTheme.border} shadow-xl group-hover:scale-105 transition-transform`}
               />
             ) : (
-              <div className="w-24 h-24 rounded-full bg-gradient-to-tr from-rose-400 to-pink-500 flex items-center justify-center text-white shadow-xl shadow-rose-500/25 border-4 border-white dark:border-midnight-800 group-hover:scale-105 transition-transform">
+              <div className={`w-24 h-24 rounded-full ${currentTheme.buttonGrad} flex items-center justify-center text-white shadow-xl ${currentTheme.shadow} border-4 border-white dark:border-midnight-800 group-hover:scale-105 transition-transform`}>
                 <User className="w-12 h-12" />
               </div>
             )}
-            <div className="absolute bottom-0 right-0 p-2 rounded-full bg-rose-500 text-white shadow-md group-hover:bg-rose-600 transition">
+            <div className={`absolute bottom-0 right-0 p-2 rounded-full ${currentTheme.buttonGrad} text-white shadow-md transition hover:opacity-95`}>
               <Camera className="w-4 h-4" />
             </div>
           </div>
           <button
             type="button"
             onClick={() => fileInputRef.current?.click()}
-            className="text-xs font-semibold text-rose-500 dark:text-rose-400 mt-2.5 hover:underline flex items-center gap-1"
+            className={`text-xs font-semibold ${currentTheme.activeText} mt-2.5 hover:underline flex items-center gap-1`}
           >
             <Camera className="w-3.5 h-3.5" />
             <span>Change Profile Picture</span>
@@ -250,7 +250,7 @@ export const SettingsView = () => {
               required
               value={displayName}
               onChange={(e) => setDisplayName(e.target.value)}
-              className="w-full pl-10 pr-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 text-xs focus:ring-2 focus:ring-rose-500 outline-none"
+              className={`w-full pl-10 pr-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 text-xs focus:ring-2 ${currentTheme.ring} outline-none`}
             />
           </div>
         </div>
@@ -265,7 +265,7 @@ export const SettingsView = () => {
               type="date"
               value={anniversaryDate}
               onChange={(e) => setAnniversaryDate(e.target.value)}
-              className="w-full pl-10 pr-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 text-xs focus:ring-2 focus:ring-rose-500 outline-none"
+              className={`w-full pl-10 pr-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 text-xs focus:ring-2 ${currentTheme.ring} outline-none`}
             />
           </div>
         </div>
@@ -279,26 +279,26 @@ export const SettingsView = () => {
             value={welcomeMessage}
             onChange={(e) => setWelcomeMessage(e.target.value)}
             placeholder="Forever and always 💗"
-            className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 text-xs focus:ring-2 focus:ring-rose-500 outline-none"
+            className={`w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 text-xs focus:ring-2 ${currentTheme.ring} outline-none`}
           />
         </div>
 
         <button
           type="submit"
           disabled={isSaving}
-          className="w-full py-2.5 px-4 rounded-xl bg-rose-500 hover:bg-rose-600 text-white text-xs font-semibold shadow-md shadow-rose-500/20 active:scale-95 transition disabled:opacity-50"
+          className={`w-full py-2.5 px-4 rounded-xl ${currentTheme.buttonGrad} text-white text-xs font-semibold shadow-md ${currentTheme.shadow} active:scale-95 transition disabled:opacity-50`}
         >
           {isSaving ? 'Saving Changes...' : 'Save Settings'}
         </button>
       </form>
 
       {/* Theme & Palette Selection */}
-      <div className="glass rounded-3xl p-5 border border-rose-200/60 dark:border-rose-900/40 space-y-4">
+      <div className={`glass rounded-3xl p-5 border ${currentTheme.border} space-y-4`}>
         <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-400 mb-2">
           Romantic Themes & Appearance
         </h3>
 
-        <div className="flex items-center justify-between py-2 border-b border-rose-100 dark:border-slate-800">
+        <div className={`flex items-center justify-between py-2 border-b ${currentTheme.borderLight}`}>
           <div>
             <h4 className="text-xs font-semibold text-slate-800 dark:text-slate-200">Dark Mode</h4>
             <p className="text-[11px] text-slate-400">Soft romantic night tones</p>
@@ -306,7 +306,7 @@ export const SettingsView = () => {
           <button
             onClick={toggleDarkMode}
             className={`w-12 h-6 rounded-full transition-colors relative p-0.5 ${
-              isDarkMode ? 'bg-rose-500' : 'bg-slate-300'
+              isDarkMode ? currentTheme.accent : 'bg-slate-300'
             }`}
           >
             <div
@@ -329,8 +329,8 @@ export const SettingsView = () => {
                 onClick={() => setPalette(key)}
                 className={`p-3 rounded-2xl border text-left flex items-center justify-between transition ${
                   palette === key
-                    ? 'border-rose-500 ring-2 ring-rose-200 dark:ring-rose-900/50 bg-rose-50/50 dark:bg-rose-950/30'
-                    : 'border-slate-200 dark:border-slate-700 hover:border-rose-300'
+                    ? `${currentTheme.border} ring-2 ${currentTheme.ring} ${currentTheme.softBg}`
+                    : `border-slate-200 dark:border-slate-700 ${currentTheme.softHover}`
                 }`}
               >
                 <div>
@@ -347,7 +347,7 @@ export const SettingsView = () => {
                     {val.name}
                   </span>
                 </div>
-                {palette === key && <Check className="w-4 h-4 text-rose-500" />}
+                {palette === key && <Check className={`w-4 h-4 ${currentTheme.activeText}`} />}
               </button>
             ))}
           </div>
@@ -355,8 +355,8 @@ export const SettingsView = () => {
       </div>
 
       {/* Notifications & Sound Alerts */}
-      <div className="glass rounded-3xl p-5 border border-rose-200/60 dark:border-rose-900/40 space-y-4">
-        <div className="flex items-center gap-2 text-rose-500">
+      <div className={`glass rounded-3xl p-5 border ${currentTheme.border} space-y-4`}>
+        <div className={`flex items-center gap-2 ${currentTheme.activeText}`}>
           <Bell className="w-4 h-4" />
           <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-400">
             Notifications & Sound Alerts
@@ -364,7 +364,7 @@ export const SettingsView = () => {
         </div>
 
         {/* Sound toggle */}
-        <div className="flex items-center justify-between py-2 border-b border-rose-100 dark:border-slate-800">
+        <div className={`flex items-center justify-between py-2 border-b ${currentTheme.borderLight}`}>
           <div>
             <h4 className="text-xs font-semibold text-slate-800 dark:text-slate-200">
               Romantic Audio Chime
@@ -375,7 +375,7 @@ export const SettingsView = () => {
             type="button"
             onClick={handleToggleSound}
             className={`w-12 h-6 rounded-full transition-colors relative p-0.5 ${
-              soundEnabled ? 'bg-rose-500' : 'bg-slate-300'
+              soundEnabled ? currentTheme.accent : 'bg-slate-300'
             }`}
           >
             <div
@@ -387,20 +387,20 @@ export const SettingsView = () => {
         </div>
 
         {/* Browser notification permission */}
-        <div className="flex items-center justify-between py-2 border-b border-rose-100 dark:border-slate-800">
+        <div className={`flex items-center justify-between py-2 border-b ${currentTheme.borderLight}`}>
           <div>
             <h4 className="text-xs font-semibold text-slate-800 dark:text-slate-200">
               Browser Push Alerts
             </h4>
             <p className="text-[11px] text-slate-400">
-              Status: <span className="font-semibold capitalize text-rose-500">{notifPermission}</span>
+              Status: <span className={`font-semibold capitalize ${currentTheme.activeText}`}>{notifPermission}</span>
             </p>
           </div>
           {notifPermission !== 'granted' ? (
             <button
               type="button"
               onClick={handleEnableNotifications}
-              className="py-1.5 px-3 rounded-xl bg-rose-500 hover:bg-rose-600 text-white text-xs font-semibold shadow-sm transition"
+              className={`py-1.5 px-3 rounded-xl ${currentTheme.buttonGrad} text-white text-xs font-semibold shadow-sm transition`}
             >
               Enable Alerts
             </button>
@@ -415,7 +415,7 @@ export const SettingsView = () => {
         <button
           type="button"
           onClick={handleSendTestNotification}
-          className="w-full py-2.5 px-4 rounded-xl bg-rose-50 dark:bg-rose-950/40 text-rose-600 dark:text-rose-300 hover:bg-rose-100 text-xs font-semibold flex items-center justify-center gap-1.5 transition active:scale-95"
+          className={`w-full py-2.5 px-4 rounded-xl ${currentTheme.softBg} ${currentTheme.activeText} ${currentTheme.softHover} text-xs font-semibold flex items-center justify-center gap-1.5 transition active:scale-95`}
         >
           <BellRing className="w-3.5 h-3.5" />
           <span>{testNotifSent ? 'Test Notification Sent! 🔔' : 'Send Test Alert & Sound'}</span>
@@ -423,7 +423,7 @@ export const SettingsView = () => {
       </div>
 
       {/* Network & Infrastructure Settings */}
-      <div className="glass rounded-3xl p-5 border border-rose-200/60 dark:border-rose-900/40 space-y-3">
+      <div className={`glass rounded-3xl p-5 border ${currentTheme.border} space-y-3`}>
         <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-400 mb-1">
           Infrastructure & Calling
         </h3>
@@ -434,14 +434,14 @@ export const SettingsView = () => {
           onClick={() => setIsConfigOpen(true)}
           className="py-2.5 px-4 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 text-xs font-semibold flex items-center justify-center gap-1.5 transition"
         >
-          <Radio className="w-4 h-4 text-rose-500" />
+          <Radio className={`w-4 h-4 ${currentTheme.activeText}`} />
           <span>Configure Services & TURN Server</span>
         </button>
       </div>
 
       {/* Privacy and Security Transparency */}
-      <div className="p-4 rounded-3xl bg-rose-50/60 dark:bg-rose-950/30 border border-rose-200/60 dark:border-rose-900/40 space-y-2">
-        <div className="flex items-center gap-2 text-rose-600 dark:text-rose-400">
+      <div className={`p-4 rounded-3xl ${currentTheme.softBg} border ${currentTheme.border} space-y-2`}>
+        <div className={`flex items-center gap-2 ${currentTheme.activeText}`}>
           <ShieldCheck className="w-4 h-4" />
           <h4 className="text-xs font-bold">Privacy & Security Transparency</h4>
         </div>

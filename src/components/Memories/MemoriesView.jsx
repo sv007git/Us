@@ -19,11 +19,13 @@ import { uploadCoupleMedia, getSignedMediaUrl, compressImage, deleteCoupleMedia 
 import { MediaLightbox } from '../Chat/MediaLightbox'
 import { format } from 'date-fns'
 import { showBrowserNotification, playNotificationSound } from '../../lib/notificationHelper'
+import { useTheme } from '../../context/ThemeContext'
 import confetti from 'canvas-confetti'
 
 export const MemoriesView = ({ currentTab = 'memories', onNavigate = null, onShowToast = null }) => {
   const { user } = useAuth()
   const { coupleSpace, partner } = useCouple()
+  const { currentTheme } = useTheme()
 
   const [memories, setMemories] = useState([])
   const [loading, setLoading] = useState(true)
@@ -267,9 +269,9 @@ export const MemoriesView = ({ currentTab = 'memories', onNavigate = null, onSho
   return (
     <div className="flex-1 max-w-4xl mx-auto w-full p-4 pb-20 space-y-4">
       {/* Top Header */}
-      <div className="glass rounded-3xl p-5 flex items-center justify-between border border-rose-200/60 dark:border-rose-900/40">
+      <div className={`glass rounded-3xl p-5 flex items-center justify-between border ${currentTheme.border}`}>
         <div className="flex items-center space-x-3">
-          <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-rose-500 to-pink-500 text-white flex items-center justify-center shadow-md shadow-rose-500/20">
+          <div className={`w-10 h-10 rounded-2xl bg-gradient-to-tr ${currentTheme.primary} text-white flex items-center justify-center shadow-md ${currentTheme.shadow}`}>
             <ImageIcon className="w-5 h-5" />
           </div>
           <div>
@@ -287,7 +289,7 @@ export const MemoriesView = ({ currentTab = 'memories', onNavigate = null, onSho
             setPreviewUrl(null)
             setIsAddModalOpen(true)
           }}
-          className="py-2 px-3.5 rounded-full bg-rose-500 hover:bg-rose-600 text-white text-xs font-semibold shadow-md shadow-rose-500/20 active:scale-95 transition flex items-center gap-1.5"
+          className={`py-2 px-3.5 rounded-full ${currentTheme.buttonGrad} hover:opacity-95 text-white text-xs font-semibold shadow-md ${currentTheme.shadow} active:scale-95 transition flex items-center gap-1.5`}
         >
           <Plus className="w-4 h-4" />
           <span>Add Moment</span>
@@ -297,11 +299,11 @@ export const MemoriesView = ({ currentTab = 'memories', onNavigate = null, onSho
       {/* Memories Grid */}
       {loading ? (
         <div className="py-20 flex items-center justify-center">
-          <div className="w-8 h-8 border-3 border-rose-500 border-t-transparent rounded-full animate-spin" />
+          <div className={`w-8 h-8 border-3 border-current ${currentTheme.activeText} border-t-transparent rounded-full animate-spin`} />
         </div>
       ) : memories.length === 0 ? (
-        <div className="glass rounded-3xl p-10 text-center text-slate-400 border border-rose-200/50 dark:border-rose-900/30">
-          <div className="w-14 h-14 rounded-2xl bg-rose-100 dark:bg-rose-950/50 flex items-center justify-center text-rose-500 mx-auto mb-3">
+        <div className={`glass rounded-3xl p-10 text-center text-slate-400 border ${currentTheme.border}`}>
+          <div className={`w-14 h-14 rounded-2xl ${currentTheme.softBg} flex items-center justify-center ${currentTheme.activeText} mx-auto mb-3`}>
             <ImageIcon className="w-7 h-7" />
           </div>
           <h3 className="text-base font-bold text-slate-800 dark:text-slate-200">No memories yet</h3>
@@ -314,7 +316,7 @@ export const MemoriesView = ({ currentTab = 'memories', onNavigate = null, onSho
           {memories.map((m) => (
             <div
               key={m.id}
-              className="glass rounded-3xl overflow-hidden border border-rose-100 dark:border-rose-900/40 shadow-sm hover:shadow-md transition group relative flex flex-col"
+              className={`glass rounded-3xl overflow-hidden border ${currentTheme.borderLight} hover:${currentTheme.border} shadow-sm hover:shadow-md transition group relative flex flex-col`}
             >
               {/* Image Thumbnail */}
               <div
@@ -359,7 +361,7 @@ export const MemoriesView = ({ currentTab = 'memories', onNavigate = null, onSho
                     }}
                     className={`p-2 rounded-full backdrop-blur-md transition shadow-sm ${
                       m.is_favorite
-                        ? 'bg-rose-500 text-white'
+                        ? `${currentTheme.badge}`
                         : 'bg-black/40 text-white/80 hover:text-white'
                     }`}
                     title={m.is_favorite ? 'Favorited' : 'Favorite'}
@@ -372,7 +374,7 @@ export const MemoriesView = ({ currentTab = 'memories', onNavigate = null, onSho
               {/* Memory Details */}
               <div className="p-4 flex-1 flex flex-col justify-between">
                 <div>
-                  <div className="flex items-center gap-1.5 text-[11px] text-rose-500 dark:text-rose-400 font-semibold mb-1">
+                  <div className={`flex items-center gap-1.5 text-[11px] ${currentTheme.activeText} font-semibold mb-1`}>
                     <Calendar className="w-3.5 h-3.5" />
                     <span>{format(new Date(m.memory_date), 'MMMM d, yyyy')}</span>
                   </div>
@@ -392,7 +394,7 @@ export const MemoriesView = ({ currentTab = 'memories', onNavigate = null, onSho
       {/* Add Memory Modal */}
       {isAddModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in">
-          <div className="w-full max-w-md bg-white dark:bg-midnight-900 border border-rose-200 dark:border-rose-900/40 rounded-3xl p-6 shadow-2xl relative">
+          <div className={`w-full max-w-md bg-white dark:bg-midnight-900 border ${currentTheme.border} rounded-3xl p-6 shadow-2xl relative`}>
             <button
               onClick={() => setIsAddModalOpen(false)}
               className="absolute top-5 right-5 p-2 rounded-full text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
@@ -424,7 +426,7 @@ export const MemoriesView = ({ currentTab = 'memories', onNavigate = null, onSho
                   <div className="space-y-2">
                     <div
                       onClick={() => fileInputRef.current?.click()}
-                      className="aspect-video w-full rounded-2xl overflow-hidden cursor-pointer relative group border border-rose-200 dark:border-rose-800"
+                      className={`aspect-video w-full rounded-2xl overflow-hidden cursor-pointer relative group border ${currentTheme.border}`}
                     >
                       <img src={previewUrl} alt="Preview" className="w-full h-full object-cover" />
                       <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition flex items-center justify-center text-white text-xs font-semibold">
@@ -450,16 +452,16 @@ export const MemoriesView = ({ currentTab = 'memories', onNavigate = null, onSho
                     type="button"
                     onClick={() => fileInputRef.current?.click()}
                     disabled={isCompressing}
-                    className="w-full h-36 rounded-2xl border-2 border-dashed border-rose-200 dark:border-rose-800 hover:border-rose-400 bg-rose-50/50 dark:bg-slate-800/40 flex flex-col items-center justify-center text-slate-500 hover:text-rose-500 transition disabled:opacity-50"
+                    className={`w-full h-36 rounded-2xl border-2 border-dashed ${currentTheme.border} ${currentTheme.softBg} flex flex-col items-center justify-center ${currentTheme.activeText} transition disabled:opacity-50`}
                   >
                     {isCompressing ? (
                       <>
-                        <Loader2 className="w-6 h-6 mb-1 text-rose-500 animate-spin" />
+                        <Loader2 className="w-6 h-6 mb-1 animate-spin" />
                         <span className="text-xs font-medium">Compressing & optimizing photo...</span>
                       </>
                     ) : (
                       <>
-                        <Upload className="w-6 h-6 mb-1 text-rose-400" />
+                        <Upload className="w-6 h-6 mb-1 opacity-80" />
                         <span className="text-xs font-medium">Select a special photo</span>
                         <span className="text-[10px] text-slate-400 mt-0.5">Automatically compressed for fast upload</span>
                       </>
@@ -478,7 +480,7 @@ export const MemoriesView = ({ currentTab = 'memories', onNavigate = null, onSho
                   value={title}
                   onChange={(e) => setTitle(e.target.value)}
                   placeholder="e.g. Our First Trip to the Beach"
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 text-xs focus:ring-2 focus:ring-rose-500 outline-none"
+                  className={`w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 text-xs focus:ring-2 ${currentTheme.ring} outline-none`}
                 />
               </div>
 
@@ -491,7 +493,7 @@ export const MemoriesView = ({ currentTab = 'memories', onNavigate = null, onSho
                   required
                   value={memoryDate}
                   onChange={(e) => setMemoryDate(e.target.value)}
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 text-xs focus:ring-2 focus:ring-rose-500 outline-none"
+                  className={`w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 text-xs focus:ring-2 ${currentTheme.ring} outline-none`}
                 />
               </div>
 
@@ -504,7 +506,7 @@ export const MemoriesView = ({ currentTab = 'memories', onNavigate = null, onSho
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}
                   placeholder="What made this moment unforgettable..."
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 text-xs focus:ring-2 focus:ring-rose-500 outline-none resize-none"
+                  className={`w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 text-xs focus:ring-2 ${currentTheme.ring} outline-none resize-none`}
                 />
               </div>
 
@@ -519,7 +521,7 @@ export const MemoriesView = ({ currentTab = 'memories', onNavigate = null, onSho
                 <button
                   type="submit"
                   disabled={isUploading || isCompressing}
-                  className="px-5 py-2.5 bg-rose-500 hover:bg-rose-600 text-white text-xs font-semibold rounded-xl shadow-md shadow-rose-500/20 disabled:opacity-50 flex items-center gap-1.5"
+                  className={`px-5 py-2.5 ${currentTheme.buttonGrad} hover:opacity-95 text-white text-xs font-semibold rounded-xl shadow-md ${currentTheme.shadow} disabled:opacity-50 flex items-center gap-1.5`}
                 >
                   {isUploading ? (
                     <>

@@ -1,5 +1,6 @@
 import React, { useState } from 'react'
 import { KeyRound, Database, Radio, X, Check, ExternalLink, Loader2, RefreshCw } from 'lucide-react'
+import { useTheme } from '../../context/ThemeContext'
 import {
   initialUrl,
   initialKey,
@@ -11,6 +12,7 @@ import {
 } from '../../lib/supabaseClient'
 
 export const ConfigModal = ({ isOpen, onClose }) => {
+  const { currentTheme } = useTheme()
   const [supabaseUrl, setSupabaseUrl] = useState(initialUrl || '')
   const [supabaseKey, setSupabaseKey] = useState(initialKey || '')
   const [turnUrls, setTurnUrls] = useState(() => {
@@ -108,7 +110,7 @@ export const ConfigModal = ({ isOpen, onClose }) => {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in">
-      <div className="w-full max-w-lg bg-white dark:bg-midnight-900 border border-rose-200 dark:border-rose-900/40 rounded-3xl p-6 shadow-2xl relative max-h-[90vh] overflow-y-auto">
+      <div className={`w-full max-w-lg bg-white dark:bg-midnight-900 border ${currentTheme.border} rounded-3xl p-6 shadow-2xl relative max-h-[90vh] overflow-y-auto`}>
         <button
           onClick={onClose}
           className="absolute top-5 right-5 p-2 rounded-full text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition"
@@ -117,7 +119,7 @@ export const ConfigModal = ({ isOpen, onClose }) => {
         </button>
 
         <div className="flex items-center space-x-3 mb-4">
-          <div className="w-10 h-10 rounded-2xl bg-rose-100 dark:bg-rose-950/60 text-rose-600 dark:text-rose-400 flex items-center justify-center">
+          <div className={`w-10 h-10 rounded-2xl ${currentTheme.softBg} ${currentTheme.activeText} flex items-center justify-center`}>
             <Database className="w-5 h-5" />
           </div>
           <div>
@@ -158,7 +160,7 @@ export const ConfigModal = ({ isOpen, onClose }) => {
           <div>
             <div className="flex items-center justify-between mb-1">
               <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300">
-                Supabase Project URL <span className="text-rose-500">*</span>
+                Supabase Project URL <span className={currentTheme.activeText}>*</span>
               </label>
               <span className="text-[10px] text-slate-400">Format: https://xyz.supabase.co</span>
             </div>
@@ -168,7 +170,7 @@ export const ConfigModal = ({ isOpen, onClose }) => {
               onChange={handleUrlChange}
               placeholder="https://your-project-ref.supabase.co"
               required
-              className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/60 text-slate-900 dark:text-slate-100 text-sm focus:outline-none focus:ring-2 focus:ring-rose-500"
+              className={`w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/60 text-slate-900 dark:text-slate-100 text-sm focus:outline-none focus:ring-2 ${currentTheme.ring}`}
             />
             <p className="text-[11px] text-slate-400 mt-1">
               Found in: <strong>Project Settings → API → Project URL</strong>. (Do not paste the dashboard browser URL).
@@ -178,7 +180,7 @@ export const ConfigModal = ({ isOpen, onClose }) => {
           {/* Supabase Anon Key */}
           <div>
             <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
-              Supabase Anon Public Key <span className="text-rose-500">*</span>
+              Supabase Anon Public Key <span className={currentTheme.activeText}>*</span>
             </label>
             <textarea
               rows={3}
@@ -189,7 +191,7 @@ export const ConfigModal = ({ isOpen, onClose }) => {
               }}
               placeholder="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
               required
-              className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/60 text-slate-900 dark:text-slate-100 text-xs font-mono focus:outline-none focus:ring-2 focus:ring-rose-500"
+              className={`w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/60 text-slate-900 dark:text-slate-100 text-xs font-mono focus:outline-none focus:ring-2 ${currentTheme.ring}`}
             />
             <p className="text-[11px] text-slate-400 mt-1">
               Found in: <strong>Project Settings → API → Project API Keys → anon / public</strong>.
@@ -202,7 +204,7 @@ export const ConfigModal = ({ isOpen, onClose }) => {
               type="button"
               disabled={isTesting || !supabaseUrl || !supabaseKey}
               onClick={handleTestConnection}
-              className="w-full py-2.5 px-4 rounded-xl border border-rose-300 dark:border-rose-800 hover:bg-rose-50 dark:hover:bg-rose-950/40 text-rose-600 dark:text-rose-300 text-xs font-semibold flex items-center justify-center gap-2 transition disabled:opacity-50"
+              className={`w-full py-2.5 px-4 rounded-xl border ${currentTheme.border} ${currentTheme.softHover} ${currentTheme.activeText} text-xs font-semibold flex items-center justify-center gap-2 transition disabled:opacity-50`}
             >
               {isTesting ? (
                 <>
@@ -221,7 +223,7 @@ export const ConfigModal = ({ isOpen, onClose }) => {
           {/* WebRTC TURN Server Section */}
           <div className="pt-2 border-t border-slate-200 dark:border-slate-800">
             <div className="flex items-center space-x-2 mb-2">
-              <Radio className="w-4 h-4 text-rose-500" />
+              <Radio className={`w-4 h-4 ${currentTheme.activeText}`} />
               <h3 className="text-sm font-semibold text-slate-900 dark:text-slate-200">
                 WebRTC TURN Relay (Optional for cellular carrier networks)
               </h3>
@@ -293,7 +295,7 @@ export const ConfigModal = ({ isOpen, onClose }) => {
               </button>
               <button
                 type="submit"
-                className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-rose-500 to-pink-600 text-white text-xs font-semibold shadow-md shadow-rose-500/20 hover:opacity-95"
+                className={`px-5 py-2.5 rounded-xl ${currentTheme.buttonGrad} text-white text-xs font-semibold ${currentTheme.shadow} hover:opacity-95`}
               >
                 Save & Connect
               </button>

@@ -17,6 +17,7 @@ import {
   Activity,
 } from 'lucide-react'
 import { useCouple } from '../../context/CoupleContext'
+import { useTheme } from '../../context/ThemeContext'
 import confetti from 'canvas-confetti'
 
 // Helper to calculate cycle status
@@ -127,6 +128,7 @@ const calculateCyclePhases = ({ lastPeriodDateStr, cycleLength = 28, periodDurat
 
 export const CycleCalculator = () => {
   const { coupleSpace, partner, updateCoupleSpace } = useCouple()
+  const { currentTheme } = useTheme()
 
   // Load from couple space metadata or defaults
   const savedCycle = coupleSpace?.metadata?.cycle || {}
@@ -194,9 +196,9 @@ export const CycleCalculator = () => {
   return (
     <div className="space-y-4 animate-fade-in">
       {/* Top Header Card */}
-      <div className="glass rounded-3xl p-5 border border-rose-200/60 dark:border-rose-900/40 flex items-center justify-between">
+      <div className={`glass rounded-3xl p-5 border ${currentTheme.border} flex items-center justify-between`}>
         <div className="flex items-center space-x-3">
-          <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-rose-500 to-pink-500 text-white flex items-center justify-center shadow-md shadow-rose-500/20">
+          <div className={`w-10 h-10 rounded-2xl bg-gradient-to-tr ${currentTheme.primary} text-white flex items-center justify-center shadow-md ${currentTheme.shadow}`}>
             <Droplets className="w-5 h-5 fill-current text-white" />
           </div>
           <div>
@@ -212,7 +214,7 @@ export const CycleCalculator = () => {
         <div className="flex items-center gap-2">
           <button
             onClick={() => setIsEditing((prev) => !prev)}
-            className="py-1.5 px-3 rounded-full bg-rose-50 dark:bg-rose-950/40 text-rose-600 dark:text-rose-300 hover:bg-rose-100 text-xs font-semibold flex items-center gap-1.5 transition active:scale-95"
+            className={`py-1.5 px-3 rounded-full ${currentTheme.softBg} ${currentTheme.activeText} ${currentTheme.softHover} text-xs font-semibold flex items-center gap-1.5 transition active:scale-95`}
           >
             <Edit2 className="w-3.5 h-3.5" />
             <span>{isEditing ? 'Cancel' : 'Edit Cycle'}</span>
@@ -227,16 +229,16 @@ export const CycleCalculator = () => {
             e.preventDefault()
             handleSave()
           }}
-          className="glass rounded-3xl p-5 border border-rose-300 dark:border-rose-800 shadow-xl space-y-4 animate-scale-up"
+          className={`glass rounded-3xl p-5 border ${currentTheme.border} shadow-xl space-y-4 animate-scale-up`}
         >
           <div className="flex items-center justify-between">
-            <h4 className="text-xs font-bold uppercase tracking-wider text-rose-600 dark:text-rose-400">
+            <h4 className={`text-xs font-bold uppercase tracking-wider ${currentTheme.activeText}`}>
               Cycle Parameters
             </h4>
             <button
               type="button"
               onClick={handleLogPeriodToday}
-              className="py-1 px-3 rounded-full bg-rose-500 text-white text-[11px] font-semibold shadow-sm hover:bg-rose-600 active:scale-95 transition"
+              className={`py-1 px-3 rounded-full ${currentTheme.badge} text-[11px] font-semibold shadow-sm hover:opacity-90 active:scale-95 transition`}
             >
               🩸 Log Period Started Today
             </button>
@@ -244,8 +246,8 @@ export const CycleCalculator = () => {
 
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             {/* Last period start */}
-            <div className="p-3 rounded-2xl bg-rose-50/50 dark:bg-rose-950/20 border border-rose-200 dark:border-rose-900/40 space-y-1">
-              <label className="block text-[11px] font-bold text-rose-700 dark:text-rose-300">
+            <div className={`p-3 rounded-2xl ${currentTheme.softBg} border ${currentTheme.borderLight} space-y-1`}>
+              <label className={`block text-[11px] font-bold ${currentTheme.activeText}`}>
                 Last Period Start Date
               </label>
               <input
@@ -253,15 +255,15 @@ export const CycleCalculator = () => {
                 required
                 value={lastPeriodDate}
                 onChange={(e) => setLastPeriodDate(e.target.value)}
-                className="w-full px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs text-slate-900 dark:text-slate-100 outline-none focus:ring-2 focus:ring-rose-400"
+                className={`w-full px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs text-slate-900 dark:text-slate-100 outline-none focus:ring-2 ${currentTheme.ring}`}
               />
             </div>
 
             {/* Cycle length */}
-            <div className="p-3 rounded-2xl bg-rose-50/50 dark:bg-rose-950/20 border border-rose-200 dark:border-rose-900/40 space-y-1">
-              <div className="flex justify-between items-center text-[11px] font-bold text-rose-700 dark:text-rose-300">
+            <div className={`p-3 rounded-2xl ${currentTheme.softBg} border ${currentTheme.borderLight} space-y-1`}>
+              <div className={`flex justify-between items-center text-[11px] font-bold ${currentTheme.activeText}`}>
                 <span>Cycle Length:</span>
-                <span className="font-extrabold text-rose-600">{cycleLength} days</span>
+                <span className="font-extrabold">{cycleLength} days</span>
               </div>
               <input
                 type="range"
@@ -269,16 +271,16 @@ export const CycleCalculator = () => {
                 max="38"
                 value={cycleLength}
                 onChange={(e) => setCycleLength(e.target.value)}
-                className="w-full accent-rose-500"
+                className="w-full accent-current"
               />
               <span className="text-[10px] text-slate-400 block text-right">Avg: 28 days</span>
             </div>
 
             {/* Period duration */}
-            <div className="p-3 rounded-2xl bg-rose-50/50 dark:bg-rose-950/20 border border-rose-200 dark:border-rose-900/40 space-y-1">
-              <div className="flex justify-between items-center text-[11px] font-bold text-rose-700 dark:text-rose-300">
+            <div className={`p-3 rounded-2xl ${currentTheme.softBg} border ${currentTheme.borderLight} space-y-1`}>
+              <div className={`flex justify-between items-center text-[11px] font-bold ${currentTheme.activeText}`}>
                 <span>Period Bleed:</span>
-                <span className="font-extrabold text-rose-600">{periodDuration} days</span>
+                <span className="font-extrabold">{periodDuration} days</span>
               </div>
               <input
                 type="range"
@@ -286,7 +288,7 @@ export const CycleCalculator = () => {
                 max="8"
                 value={periodDuration}
                 onChange={(e) => setPeriodDuration(e.target.value)}
-                className="w-full accent-rose-500"
+                className="w-full accent-current"
               />
               <span className="text-[10px] text-slate-400 block text-right">Avg: 5 days</span>
             </div>
@@ -303,7 +305,7 @@ export const CycleCalculator = () => {
             <button
               type="submit"
               disabled={isSaving}
-              className="py-2 px-5 rounded-xl bg-rose-500 hover:bg-rose-600 text-white text-xs font-semibold shadow-md shadow-rose-500/20 active:scale-95 transition disabled:opacity-50"
+              className={`py-2 px-5 rounded-xl ${currentTheme.buttonGrad} hover:opacity-95 text-white text-xs font-semibold shadow-md ${currentTheme.shadow} active:scale-95 transition disabled:opacity-50`}
             >
               {isSaving ? 'Saving...' : 'Save Cycle Info'}
             </button>
@@ -315,7 +317,7 @@ export const CycleCalculator = () => {
       {cycleData ? (
         <div className="space-y-4">
           {/* Hero Phase Card */}
-          <div className="glass rounded-3xl p-6 border border-rose-200/60 dark:border-rose-900/40 relative overflow-hidden space-y-4 shadow-sm">
+          <div className={`glass rounded-3xl p-6 border ${currentTheme.border} relative overflow-hidden space-y-4 shadow-sm`}>
             <div className="flex flex-wrap items-center justify-between gap-2">
               <div className="flex items-center gap-2">
                 <span className={`px-3 py-1 rounded-full text-xs font-bold border ${cycleData.phase.badgeClass}`}>
@@ -390,9 +392,9 @@ export const CycleCalculator = () => {
             </div>
 
             {/* Guy's Special Care & Romance Guide */}
-            <div className="p-4 rounded-2xl bg-gradient-to-r from-rose-50 to-pink-50 dark:from-rose-950/40 dark:to-pink-950/40 border border-rose-200/60 dark:border-rose-900/40 space-y-1.5">
-              <div className="flex items-center gap-1.5 text-xs font-bold text-rose-600 dark:text-rose-400">
-                <Heart className="w-4 h-4 fill-current text-rose-500 animate-heartbeat" />
+            <div className={`p-4 rounded-2xl ${currentTheme.softBg} border ${currentTheme.border} space-y-1.5`}>
+              <div className={`flex items-center gap-1.5 text-xs font-bold ${currentTheme.activeText}`}>
+                <Heart className="w-4 h-4 fill-current animate-heartbeat" />
                 <span>How He Can Pamper & Care for Her Today</span>
               </div>
               <p className="text-xs text-slate-700 dark:text-slate-200 leading-relaxed font-medium">
@@ -404,12 +406,12 @@ export const CycleCalculator = () => {
           {/* Forecast Cards: Next Period & Next Ovulation */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
             {/* Next Period Card */}
-            <div className="glass rounded-3xl p-4 border border-rose-200/60 dark:border-rose-900/40 space-y-2">
+            <div className={`glass rounded-3xl p-4 border ${currentTheme.border} space-y-2`}>
               <div className="flex items-center justify-between">
-                <span className="text-[10px] font-bold uppercase tracking-wider text-rose-500">
+                <span className={`text-[10px] font-bold uppercase tracking-wider ${currentTheme.activeText}`}>
                   Next Period Expected
                 </span>
-                <Clock className="w-4 h-4 text-rose-400" />
+                <Clock className={`w-4 h-4 ${currentTheme.activeText}`} />
               </div>
               <div className="text-xl font-bold text-slate-900 dark:text-white">
                 In {cycleData.daysUntilNextPeriod} {cycleData.daysUntilNextPeriod === 1 ? 'day' : 'days'}
@@ -453,7 +455,7 @@ export const CycleCalculator = () => {
           </div>
 
           {/* 4 Phases Reference Table */}
-          <div className="glass rounded-3xl p-5 border border-rose-200/60 dark:border-rose-900/40 space-y-3">
+          <div className={`glass rounded-3xl p-5 border ${currentTheme.border} space-y-3`}>
             <h4 className="text-xs font-bold uppercase tracking-wider text-slate-400">
               The 4 Phases of Her Cycle
             </h4>
@@ -486,8 +488,8 @@ export const CycleCalculator = () => {
         </div>
       ) : (
         /* Empty State */
-        <div className="glass rounded-3xl p-10 text-center text-slate-400 border border-rose-200/50 dark:border-rose-900/30 space-y-3">
-          <Droplets className="w-12 h-12 text-rose-400 mx-auto stroke-1" />
+        <div className={`glass rounded-3xl p-10 text-center text-slate-400 border ${currentTheme.border} space-y-3`}>
+          <Droplets className={`w-12 h-12 ${currentTheme.activeText} mx-auto stroke-1`} />
           <h4 className="text-base font-bold text-slate-800 dark:text-slate-200">
             No Period Date Logged Yet
           </h4>
@@ -497,13 +499,13 @@ export const CycleCalculator = () => {
           <div className="flex justify-center gap-2 pt-1">
             <button
               onClick={() => setIsEditing(true)}
-              className="py-2 px-4 rounded-xl bg-rose-500 hover:bg-rose-600 text-white text-xs font-semibold shadow-md shadow-rose-500/20 active:scale-95 transition"
+              className={`py-2 px-4 rounded-xl ${currentTheme.buttonGrad} text-white text-xs font-semibold shadow-md ${currentTheme.shadow} active:scale-95 transition`}
             >
               Set Last Period Date
             </button>
             <button
               onClick={handleLogPeriodToday}
-              className="py-2 px-4 rounded-xl border border-rose-200 dark:border-rose-800 text-rose-600 dark:text-rose-400 text-xs font-semibold hover:bg-rose-50 active:scale-95 transition"
+              className={`py-2 px-4 rounded-xl border ${currentTheme.border} ${currentTheme.activeText} ${currentTheme.softHover} text-xs font-semibold active:scale-95 transition`}
             >
               🩸 Started Today
             </button>

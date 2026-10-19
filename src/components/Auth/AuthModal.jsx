@@ -1,9 +1,11 @@
 import React, { useState } from 'react'
 import { Heart, Lock, Mail, User, ArrowRight, Sparkles } from 'lucide-react'
 import { useAuth } from '../../context/AuthContext'
+import { useTheme } from '../../context/ThemeContext'
 import confetti from 'canvas-confetti'
 
 export const AuthModal = () => {
+  const { currentTheme } = useTheme()
   const { signIn, signUp, resetPassword } = useAuth()
   const [mode, setMode] = useState('signin') // 'signin', 'signup', 'forgot'
   const [email, setEmail] = useState('')
@@ -41,18 +43,18 @@ export const AuthModal = () => {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-4 bg-gradient-to-br from-rose-50 via-pink-50 to-purple-50 dark:from-midnight-950 dark:via-midnight-900 dark:to-midnight-950">
-      <div className="w-full max-w-md bg-white/90 dark:bg-midnight-900/90 backdrop-blur-xl border border-rose-200/60 dark:border-rose-900/40 rounded-3xl p-7 sm:p-9 shadow-2xl relative overflow-hidden">
+    <div className={`min-h-screen flex items-center justify-center p-4 bg-gradient-to-br ${currentTheme.bgGradient}`}>
+      <div className={`w-full max-w-md bg-white/90 dark:bg-midnight-900/90 backdrop-blur-xl border ${currentTheme.border} rounded-3xl p-7 sm:p-9 shadow-2xl relative overflow-hidden`}>
         {/* Soft decorative background circles */}
         <div className="absolute -top-12 -right-12 w-36 h-36 bg-pink-400/10 dark:bg-pink-400/5 rounded-full blur-2xl pointer-events-none" />
         <div className="absolute -bottom-12 -left-12 w-36 h-36 bg-rose-400/10 dark:bg-rose-400/5 rounded-full blur-2xl pointer-events-none" />
 
         {/* Top Header */}
         <div className="text-center mb-6 relative">
-          <div className="inline-flex p-3 rounded-2xl bg-gradient-to-tr from-rose-400 to-pink-500 text-white shadow-lg shadow-rose-500/25 mb-3">
+          <div className={`inline-flex p-3 rounded-2xl ${currentTheme.buttonGrad} text-white shadow-lg ${currentTheme.shadow} mb-3`}>
             <Heart className="w-7 h-7 fill-current animate-heartbeat text-white" />
           </div>
-          <h1 className="text-2xl font-bold font-romantic text-rose-600 dark:text-rose-400 tracking-wide">
+          <h1 className={`text-2xl font-bold font-romantic ${currentTheme.activeText} tracking-wide`}>
             Just You & Me 💗
           </h1>
           <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
@@ -61,13 +63,13 @@ export const AuthModal = () => {
         </div>
 
         {/* Mode Switcher */}
-        <div className="flex p-1 bg-rose-100/60 dark:bg-slate-800/80 rounded-2xl mb-6">
+        <div className={`flex p-1 ${currentTheme.softBg} rounded-2xl mb-6`}>
           <button
             type="button"
             onClick={() => { setMode('signin'); setError(null); }}
             className={`flex-1 py-2 text-xs font-semibold rounded-xl transition ${
               mode === 'signin'
-                ? 'bg-white dark:bg-midnight-800 text-rose-600 dark:text-rose-400 shadow-sm'
+                ? `bg-white dark:bg-midnight-800 ${currentTheme.activeText} shadow-sm`
                 : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'
             }`}
           >
@@ -78,7 +80,7 @@ export const AuthModal = () => {
             onClick={() => { setMode('signup'); setError(null); }}
             className={`flex-1 py-2 text-xs font-semibold rounded-xl transition ${
               mode === 'signup'
-                ? 'bg-white dark:bg-midnight-800 text-rose-600 dark:text-rose-400 shadow-sm'
+                ? `bg-white dark:bg-midnight-800 ${currentTheme.activeText} shadow-sm`
                 : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'
             }`}
           >
@@ -114,7 +116,7 @@ export const AuthModal = () => {
                   value={displayName}
                   onChange={(e) => setDisplayName(e.target.value)}
                   placeholder="e.g. My Darling, Sweetheart, Harish"
-                  className="w-full pl-10 pr-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white/70 dark:bg-slate-800/60 text-slate-900 dark:text-slate-100 text-sm focus:outline-none focus:ring-2 focus:ring-rose-500"
+                  className={`w-full pl-10 pr-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white/70 dark:bg-slate-800/60 text-slate-900 dark:text-slate-100 text-sm focus:outline-none focus:ring-2 ${currentTheme.ring}`}
                 />
               </div>
             </div>
@@ -132,7 +134,7 @@ export const AuthModal = () => {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="your.email@example.com"
-                className="w-full pl-10 pr-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white/70 dark:bg-slate-800/60 text-slate-900 dark:text-slate-100 text-sm focus:outline-none focus:ring-2 focus:ring-rose-500"
+                className={`w-full pl-10 pr-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white/70 dark:bg-slate-800/60 text-slate-900 dark:text-slate-100 text-sm focus:outline-none focus:ring-2 ${currentTheme.ring}`}
               />
             </div>
           </div>
@@ -147,7 +149,7 @@ export const AuthModal = () => {
                   <button
                     type="button"
                     onClick={() => { setMode('forgot'); setError(null); }}
-                    className="text-[11px] text-rose-500 hover:underline"
+                    className={`text-[11px] ${currentTheme.activeText} hover:underline`}
                   >
                     Forgot password?
                   </button>
@@ -162,7 +164,7 @@ export const AuthModal = () => {
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="••••••••"
                   minLength={6}
-                  className="w-full pl-10 pr-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white/70 dark:bg-slate-800/60 text-slate-900 dark:text-slate-100 text-sm focus:outline-none focus:ring-2 focus:ring-rose-500"
+                  className={`w-full pl-10 pr-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white/70 dark:bg-slate-800/60 text-slate-900 dark:text-slate-100 text-sm focus:outline-none focus:ring-2 ${currentTheme.ring}`}
                 />
               </div>
             </div>
@@ -171,7 +173,7 @@ export const AuthModal = () => {
           <button
             type="submit"
             disabled={isLoading}
-            className="w-full mt-2 py-3 px-4 rounded-xl bg-gradient-to-r from-rose-500 via-pink-500 to-rose-600 hover:opacity-95 text-white font-semibold text-sm shadow-md shadow-rose-500/30 flex items-center justify-center space-x-2 transition disabled:opacity-50"
+            className={`w-full mt-2 py-3 px-4 rounded-xl ${currentTheme.buttonGrad} hover:opacity-95 text-white font-semibold text-sm shadow-md ${currentTheme.shadow} flex items-center justify-center space-x-2 transition disabled:opacity-50`}
           >
             {isLoading ? (
               <span className="inline-block w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
@@ -194,14 +196,14 @@ export const AuthModal = () => {
           <button
             type="button"
             onClick={() => setMode('signin')}
-            className="w-full mt-4 text-center text-xs text-slate-500 dark:text-slate-400 hover:text-rose-500"
+            className={`w-full mt-4 text-center text-xs text-slate-500 dark:text-slate-400 hover:${currentTheme.activeText}`}
           >
             Back to Sign In
           </button>
         )}
 
         {/* Footer info */}
-        <div className="mt-6 pt-4 border-t border-rose-100 dark:border-slate-800 text-center text-[11px] text-slate-400">
+        <div className={`mt-6 pt-4 border-t ${currentTheme.borderLight} text-center text-[11px] text-slate-400`}>
           <span>Protected by Row Level Security & End-to-End Encryption 🔒</span>
         </div>
       </div>

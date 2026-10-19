@@ -15,6 +15,7 @@ import {
 import { useAuth } from '../../context/AuthContext'
 import { useCouple } from '../../context/CoupleContext'
 import { useCall } from '../../context/CallContext'
+import { useTheme } from '../../context/ThemeContext'
 import { differenceInDays, differenceInHours, differenceInMinutes, parseISO } from 'date-fns'
 import confetti from 'canvas-confetti'
 
@@ -33,6 +34,7 @@ export const DashboardView = ({ setCurrentTab }) => {
   const { profile, updateProfile } = useAuth()
   const { coupleSpace, partner, isPartnerOnline } = useCouple()
   const { startCall } = useCall()
+  const { currentTheme } = useTheme()
 
   const [anniversaryStats, setAnniversaryStats] = useState({ days: 0, hours: 0, mins: 0 })
   const [selectedMood, setSelectedMood] = useState(profile?.status_mood || 'Thinking of you 💭')
@@ -85,7 +87,7 @@ export const DashboardView = ({ setCurrentTab }) => {
   return (
     <div className="flex-1 max-w-4xl mx-auto w-full p-4 pb-20 space-y-5">
       {/* 1. Romantic Hero Card */}
-      <div className="relative overflow-hidden rounded-3xl p-6 sm:p-8 bg-gradient-to-r from-rose-500 via-pink-500 to-rose-600 text-white shadow-xl shadow-rose-500/20">
+      <div className={`relative overflow-hidden rounded-3xl p-6 sm:p-8 bg-gradient-to-r ${currentTheme.buttonGrad} text-white shadow-xl ${currentTheme.shadow}`}>
         <div className="relative z-10 space-y-3">
           <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/20 backdrop-blur-md text-xs font-semibold">
             <Sparkles className="w-3.5 h-3.5 text-amber-200" />
@@ -96,7 +98,7 @@ export const DashboardView = ({ setCurrentTab }) => {
             {coupleSpace?.welcome_message || 'Forever & always 💗'}
           </h2>
 
-          <p className="text-xs sm:text-sm text-rose-100 max-w-md">
+          <p className="text-xs sm:text-sm text-white/90 max-w-md">
             A sacred space just for {profile?.display_name || 'You'} & {partner?.display_name || 'Your Love'}.
           </p>
 
@@ -107,8 +109,8 @@ export const DashboardView = ({ setCurrentTab }) => {
               className="mt-4 pt-4 border-t border-white/20 flex flex-wrap items-center gap-3 cursor-pointer group"
             >
               <div className="flex items-center gap-2">
-                <Calendar className="w-4 h-4 text-rose-200" />
-                <span className="text-xs text-rose-100">Together For:</span>
+                <Calendar className="w-4 h-4 text-white/80" />
+                <span className="text-xs text-white/90">Together For:</span>
               </div>
               <div className="flex items-center gap-2 font-mono text-sm sm:text-base font-bold text-white">
                 <span className="px-2 py-1 rounded-lg bg-white/20">{anniversaryStats.days} Days</span>
@@ -122,7 +124,7 @@ export const DashboardView = ({ setCurrentTab }) => {
           ) : (
             <button
               onClick={() => setCurrentTab('settings')}
-              className="mt-2 text-xs text-rose-200 hover:text-white underline flex items-center gap-1"
+              className="mt-2 text-xs text-white/80 hover:text-white underline flex items-center gap-1"
             >
               <Calendar className="w-3.5 h-3.5" /> Set your relationship anniversary date
             </button>
@@ -134,11 +136,11 @@ export const DashboardView = ({ setCurrentTab }) => {
       </div>
 
       {/* 2. Partner Status & Live Mood Card */}
-      <div className="glass rounded-3xl p-5 border border-rose-200/60 dark:border-rose-900/40 space-y-3">
+      <div className={`glass rounded-3xl p-5 border ${currentTheme.border} space-y-3`}>
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-3">
             <div className="relative">
-              <div className="w-12 h-12 rounded-full bg-gradient-to-tr from-rose-400 to-pink-500 flex items-center justify-center text-white font-bold text-lg shadow-md">
+              <div className={`w-12 h-12 rounded-full bg-gradient-to-tr ${currentTheme.primary} flex items-center justify-center text-white font-bold text-lg shadow-md ${currentTheme.shadow}`}>
                 {(partner?.display_name || 'L').charAt(0).toUpperCase()}
               </div>
               <span
@@ -152,7 +154,7 @@ export const DashboardView = ({ setCurrentTab }) => {
                 <h3 className="font-bold text-sm text-slate-800 dark:text-slate-100">
                   {partner?.display_name || 'My Partner'}
                 </h3>
-                <span className="text-xs text-rose-500">💗</span>
+                <span className="text-xs">💗</span>
               </div>
               <p className="text-xs text-slate-500 dark:text-slate-400">
                 {isPartnerOnline ? 'Online now with you' : 'Away for a moment'}
@@ -164,14 +166,14 @@ export const DashboardView = ({ setCurrentTab }) => {
             <span className="text-[10px] font-semibold uppercase text-slate-400 block">
               Partner Mood
             </span>
-            <span className="text-xs font-medium text-rose-600 dark:text-rose-400">
+            <span className={`text-xs font-semibold ${currentTheme.activeText}`}>
               {partner?.status_mood || 'Thinking of you 💭'}
             </span>
           </div>
         </div>
 
         {/* Your Current Mood Selector */}
-        <div className="pt-3 border-t border-rose-100 dark:border-slate-800">
+        <div className={`pt-3 border-t ${currentTheme.borderLight}`}>
           <span className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider block mb-2">
             Share Your Mood with {partner?.display_name || 'Partner'}
           </span>
@@ -183,8 +185,8 @@ export const DashboardView = ({ setCurrentTab }) => {
                 disabled={isUpdatingMood}
                 className={`px-3 py-1.5 rounded-full text-xs transition ${
                   selectedMood === mood
-                    ? 'bg-rose-500 text-white font-semibold shadow-sm'
-                    : 'bg-rose-50 dark:bg-slate-800/80 text-slate-700 dark:text-slate-300 hover:bg-rose-100'
+                    ? `${currentTheme.badge} font-semibold shadow-sm`
+                    : `${currentTheme.softBg} text-slate-700 dark:text-slate-300 ${currentTheme.softHover}`
                 }`}
               >
                 {mood}
@@ -202,9 +204,9 @@ export const DashboardView = ({ setCurrentTab }) => {
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
           <button
             onClick={() => setCurrentTab('chat')}
-            className="glass rounded-2xl p-4 text-left border border-rose-100 dark:border-rose-900/30 hover:border-rose-300 active:scale-95 transition group"
+            className={`glass rounded-2xl p-4 text-left border ${currentTheme.borderLight} hover:${currentTheme.border} active:scale-95 transition group`}
           >
-            <div className="w-10 h-10 rounded-xl bg-rose-100 dark:bg-rose-950/60 text-rose-600 dark:text-rose-400 flex items-center justify-center mb-2.5 group-hover:scale-110 transition-transform">
+            <div className={`w-10 h-10 rounded-xl ${currentTheme.softBg} ${currentTheme.activeText} flex items-center justify-center mb-2.5 group-hover:scale-110 transition-transform`}>
               <MessageCircle className="w-5 h-5" />
             </div>
             <h4 className="font-semibold text-xs text-slate-800 dark:text-slate-100">Private Chat</h4>
@@ -213,9 +215,9 @@ export const DashboardView = ({ setCurrentTab }) => {
 
           <button
             onClick={() => startCall({ isVideo: true })}
-            className="glass rounded-2xl p-4 text-left border border-rose-100 dark:border-rose-900/30 hover:border-rose-300 active:scale-95 transition group"
+            className={`glass rounded-2xl p-4 text-left border ${currentTheme.borderLight} hover:${currentTheme.border} active:scale-95 transition group`}
           >
-            <div className="w-10 h-10 rounded-xl bg-pink-100 dark:bg-pink-950/60 text-pink-600 dark:text-pink-400 flex items-center justify-center mb-2.5 group-hover:scale-110 transition-transform">
+            <div className={`w-10 h-10 rounded-xl ${currentTheme.softBg} ${currentTheme.activeText} flex items-center justify-center mb-2.5 group-hover:scale-110 transition-transform`}>
               <Video className="w-5 h-5" />
             </div>
             <h4 className="font-semibold text-xs text-slate-800 dark:text-slate-100">Video Call</h4>
@@ -224,9 +226,9 @@ export const DashboardView = ({ setCurrentTab }) => {
 
           <button
             onClick={() => setCurrentTab('watch')}
-            className="glass rounded-2xl p-4 text-left border border-rose-100 dark:border-rose-900/30 hover:border-rose-300 active:scale-95 transition group"
+            className={`glass rounded-2xl p-4 text-left border ${currentTheme.borderLight} hover:${currentTheme.border} active:scale-95 transition group`}
           >
-            <div className="w-10 h-10 rounded-xl bg-purple-100 dark:bg-purple-950/60 text-purple-600 dark:text-purple-400 flex items-center justify-center mb-2.5 group-hover:scale-110 transition-transform">
+            <div className={`w-10 h-10 rounded-xl ${currentTheme.softBg} ${currentTheme.activeText} flex items-center justify-center mb-2.5 group-hover:scale-110 transition-transform`}>
               <Film className="w-5 h-5" />
             </div>
             <h4 className="font-semibold text-xs text-slate-800 dark:text-slate-100">Movie Night</h4>
@@ -235,9 +237,9 @@ export const DashboardView = ({ setCurrentTab }) => {
 
           <button
             onClick={() => setCurrentTab('memories')}
-            className="glass rounded-2xl p-4 text-left border border-rose-100 dark:border-rose-900/30 hover:border-rose-300 active:scale-95 transition group"
+            className={`glass rounded-2xl p-4 text-left border ${currentTheme.borderLight} hover:${currentTheme.border} active:scale-95 transition group`}
           >
-            <div className="w-10 h-10 rounded-xl bg-amber-100 dark:bg-amber-950/60 text-amber-600 dark:text-amber-400 flex items-center justify-center mb-2.5 group-hover:scale-110 transition-transform">
+            <div className={`w-10 h-10 rounded-xl ${currentTheme.softBg} ${currentTheme.activeText} flex items-center justify-center mb-2.5 group-hover:scale-110 transition-transform`}>
               <ImageIcon className="w-5 h-5" />
             </div>
             <h4 className="font-semibold text-xs text-slate-800 dark:text-slate-100">Memories</h4>

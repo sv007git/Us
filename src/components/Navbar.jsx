@@ -23,11 +23,11 @@ export const Navbar = ({ currentTab, setCurrentTab }) => {
   }
 
   return (
-    <header className="sticky top-0 z-30 w-full glass safe-top border-b border-rose-200/50 dark:border-rose-900/30 transition-colors duration-200">
+    <header className={`sticky top-0 z-30 w-full glass safe-top border-b ${currentTheme.border} transition-colors duration-200`}>
       <div className="max-w-4xl mx-auto px-4 h-16 flex items-center justify-between">
         {/* Left: Branding & Couple Title */}
         <div className="flex items-center space-x-3 cursor-pointer" onClick={triggerHeartBurst}>
-          <div className={`w-10 h-10 rounded-full bg-gradient-to-tr ${currentTheme.primary} flex items-center justify-center text-white shadow-md shadow-rose-500/20 active:scale-95 transition-transform overflow-hidden border border-rose-300 dark:border-rose-700`}>
+          <div className={`w-10 h-10 rounded-full bg-gradient-to-tr ${currentTheme.primary} flex items-center justify-center text-white shadow-md ${currentTheme.shadow} active:scale-95 transition-transform overflow-hidden border ${currentTheme.border}`}>
             {profile?.avatar_url ? (
               <img
                 src={profile.avatar_url}
@@ -49,7 +49,7 @@ export const Navbar = ({ currentTab, setCurrentTab }) => {
                   <img
                     src={partner.avatar_url}
                     alt={partner.display_name || 'Partner'}
-                    className="w-4 h-4 rounded-full object-cover ring-1 ring-rose-400/60"
+                    className="w-4 h-4 rounded-full object-cover ring-1 ring-white/50"
                   />
                 ) : (
                   <span
@@ -67,7 +67,7 @@ export const Navbar = ({ currentTab, setCurrentTab }) => {
                 <span className="text-slate-400">{isPartnerOnline ? 'online' : 'away'}</span>
               </div>
             ) : (
-              <p className="text-xs text-rose-400 dark:text-rose-500 font-medium">Private Sanctuary</p>
+              <p className={`text-xs ${currentTheme.activeText} font-medium`}>Private Sanctuary</p>
             )}
           </div>
         </div>
@@ -78,7 +78,7 @@ export const Navbar = ({ currentTab, setCurrentTab }) => {
             <>
               <button
                 onClick={() => startCall({ isVideo: false })}
-                className="p-2 sm:px-3 sm:py-1.5 rounded-full bg-rose-50 dark:bg-rose-950/40 text-rose-600 dark:text-rose-300 hover:bg-rose-100 dark:hover:bg-rose-900/60 active:scale-95 transition flex items-center gap-1.5 text-xs font-medium"
+                className={`p-2 sm:px-3 sm:py-1.5 rounded-full ${currentTheme.softBg} ${currentTheme.activeText} ${currentTheme.softHover} active:scale-95 transition flex items-center gap-1.5 text-xs font-medium`}
                 title="Voice Call"
                 aria-label="Start voice call"
               >
@@ -88,7 +88,7 @@ export const Navbar = ({ currentTab, setCurrentTab }) => {
 
               <button
                 onClick={() => startCall({ isVideo: true })}
-                className="p-2 sm:px-3 sm:py-1.5 rounded-full bg-rose-500 text-white hover:bg-rose-600 shadow-sm shadow-rose-500/30 active:scale-95 transition flex items-center gap-1.5 text-xs font-medium"
+                className={`p-2 sm:px-3 sm:py-1.5 rounded-full ${currentTheme.buttonGrad} text-white shadow-sm ${currentTheme.shadow} hover:opacity-95 active:scale-95 transition flex items-center gap-1.5 text-xs font-medium`}
                 title="Video Call"
                 aria-label="Start video call"
               >
@@ -101,7 +101,7 @@ export const Navbar = ({ currentTab, setCurrentTab }) => {
           {/* Dark / Light Toggle */}
           <button
             onClick={toggleDarkMode}
-            className="p-2 rounded-full text-slate-600 dark:text-slate-300 hover:bg-rose-100/60 dark:hover:bg-slate-800 transition"
+            className={`p-2 rounded-full text-slate-600 dark:text-slate-300 ${currentTheme.softHover} transition`}
             title={isDarkMode ? 'Light mode' : 'Dark mode'}
             aria-label="Toggle dark mode"
           >

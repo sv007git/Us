@@ -16,6 +16,7 @@ import {
 import { supabase } from '../../lib/supabaseClient'
 import { useAuth } from '../../context/AuthContext'
 import { useCouple } from '../../context/CoupleContext'
+import { useTheme } from '../../context/ThemeContext'
 import { BirthdayCalculator } from './BirthdayCalculator'
 import { CycleCalculator } from './CycleCalculator'
 import confetti from 'canvas-confetti'
@@ -30,6 +31,7 @@ const NOTE_COLORS = {
 export const NotesView = () => {
   const { user } = useAuth()
   const { coupleSpace, partner } = useCouple()
+  const { currentTheme } = useTheme()
 
   const [activeTab, setActiveTab] = useState('notes') // 'notes', 'birthdays', 'cycle'
   const [notes, setNotes] = useState([])
@@ -145,9 +147,9 @@ export const NotesView = () => {
   return (
     <div className="flex-1 max-w-4xl mx-auto w-full p-4 pb-20 space-y-4">
       {/* Top Header */}
-      <div className="glass rounded-3xl p-5 flex items-center justify-between border border-rose-200/60 dark:border-rose-900/40">
+      <div className={`glass rounded-3xl p-5 flex items-center justify-between border ${currentTheme.border}`}>
         <div className="flex items-center space-x-3">
-          <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-rose-500 to-pink-500 text-white flex items-center justify-center shadow-md shadow-rose-500/20">
+          <div className={`w-10 h-10 rounded-2xl bg-gradient-to-tr ${currentTheme.primary} text-white flex items-center justify-center shadow-md ${currentTheme.shadow}`}>
             {activeTab === 'birthdays' ? (
               <Cake className="w-5 h-5" />
             ) : activeTab === 'cycle' ? (
@@ -182,7 +184,7 @@ export const NotesView = () => {
               setContent('')
               setIsCreating(true)
             }}
-            className="py-2 px-3.5 rounded-full bg-rose-500 hover:bg-rose-600 text-white text-xs font-semibold shadow-md shadow-rose-500/20 active:scale-95 transition flex items-center gap-1.5"
+            className={`py-2 px-3.5 rounded-full ${currentTheme.buttonGrad} hover:opacity-95 text-white text-xs font-semibold shadow-md ${currentTheme.shadow} active:scale-95 transition flex items-center gap-1.5`}
           >
             <Plus className="w-4 h-4" />
             <span>New Note</span>
@@ -191,13 +193,13 @@ export const NotesView = () => {
       </div>
 
       {/* Sub-Tab Navigation Bar */}
-      <div className="flex p-1 bg-rose-100/60 dark:bg-slate-800/80 rounded-2xl">
+      <div className={`flex p-1 ${currentTheme.softBg} rounded-2xl border ${currentTheme.borderLight}`}>
         <button
           type="button"
           onClick={() => setActiveTab('notes')}
           className={`flex-1 py-2 text-xs font-semibold rounded-xl flex items-center justify-center gap-1.5 transition ${
             activeTab === 'notes'
-              ? 'bg-white dark:bg-midnight-800 text-rose-600 dark:text-rose-400 shadow-sm'
+              ? `bg-white dark:bg-midnight-800 ${currentTheme.activeText} shadow-sm`
               : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'
           }`}
         >
@@ -210,7 +212,7 @@ export const NotesView = () => {
           onClick={() => setActiveTab('birthdays')}
           className={`flex-1 py-2 text-xs font-semibold rounded-xl flex items-center justify-center gap-1.5 transition ${
             activeTab === 'birthdays'
-              ? 'bg-white dark:bg-midnight-800 text-rose-600 dark:text-rose-400 shadow-sm'
+              ? `bg-white dark:bg-midnight-800 ${currentTheme.activeText} shadow-sm`
               : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'
           }`}
         >
@@ -223,7 +225,7 @@ export const NotesView = () => {
           onClick={() => setActiveTab('cycle')}
           className={`flex-1 py-2 text-xs font-semibold rounded-xl flex items-center justify-center gap-1.5 transition ${
             activeTab === 'cycle'
-              ? 'bg-white dark:bg-midnight-800 text-rose-600 dark:text-rose-400 shadow-sm'
+              ? `bg-white dark:bg-midnight-800 ${currentTheme.activeText} shadow-sm`
               : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'
           }`}
         >
@@ -242,11 +244,11 @@ export const NotesView = () => {
       {isCreating && (
         <form
           onSubmit={handleSaveNote}
-          className="glass rounded-3xl p-5 border border-rose-300 dark:border-rose-800 shadow-xl space-y-3.5 animate-scale-up"
+          className={`glass rounded-3xl p-5 border ${currentTheme.border} shadow-xl space-y-3.5 animate-scale-up`}
         >
           <div className="flex items-center justify-between">
             <h3 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-1.5">
-              <Sparkles className="w-4 h-4 text-rose-500" />
+              <Sparkles className={`w-4 h-4 ${currentTheme.activeText}`} />
               {editingNoteId ? 'Edit Love Note' : 'Write a Love Note'}
             </h3>
             <button
@@ -263,7 +265,7 @@ export const NotesView = () => {
             value={title}
             onChange={(e) => setTitle(e.target.value)}
             placeholder="Title (e.g. Next Summer Vacation, Things I Love About You)"
-            className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 text-xs focus:ring-2 focus:ring-rose-500 outline-none"
+            className={`w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 text-xs focus:ring-2 ${currentTheme.ring} outline-none`}
           />
 
           <textarea
@@ -272,7 +274,7 @@ export const NotesView = () => {
             value={content}
             onChange={(e) => setContent(e.target.value)}
             placeholder="Write your note, romantic letter, or bucket list item..."
-            className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 text-xs focus:ring-2 focus:ring-rose-500 outline-none resize-none leading-relaxed"
+            className={`w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 text-xs focus:ring-2 ${currentTheme.ring} outline-none resize-none leading-relaxed`}
           />
 
           <div className="flex flex-wrap items-center justify-between gap-3 pt-2">
@@ -303,15 +305,15 @@ export const NotesView = () => {
                 type="checkbox"
                 checked={isPinned}
                 onChange={(e) => setIsPinned(e.target.checked)}
-                className="rounded accent-rose-500"
+                className="rounded accent-current"
               />
-              <Pin className="w-3.5 h-3.5 text-rose-500" /> Pin to top
+              <Pin className={`w-3.5 h-3.5 ${currentTheme.activeText}`} /> Pin to top
             </label>
 
             {/* Save button */}
             <button
               type="submit"
-              className="py-2 px-5 rounded-xl bg-rose-500 hover:bg-rose-600 text-white text-xs font-semibold shadow-md shadow-rose-500/20 active:scale-95 transition"
+              className={`py-2 px-5 rounded-xl ${currentTheme.buttonGrad} hover:opacity-95 text-white text-xs font-semibold shadow-md ${currentTheme.shadow} active:scale-95 transition`}
             >
               Save Note
             </button>
@@ -322,11 +324,11 @@ export const NotesView = () => {
       {/* Notes Grid */}
       {loading ? (
         <div className="py-20 flex items-center justify-center">
-          <div className="w-8 h-8 border-3 border-rose-500 border-t-transparent rounded-full animate-spin" />
+          <div className={`w-8 h-8 border-3 border-current ${currentTheme.activeText} border-t-transparent rounded-full animate-spin`} />
         </div>
       ) : notes.length === 0 ? (
-        <div className="glass rounded-3xl p-10 text-center text-slate-400 border border-rose-200/50 dark:border-rose-900/30">
-          <Heart className="w-12 h-12 text-rose-400 mx-auto mb-3 stroke-1" />
+        <div className={`glass rounded-3xl p-10 text-center text-slate-400 border ${currentTheme.border}`}>
+          <Heart className={`w-12 h-12 ${currentTheme.activeText} mx-auto mb-3 stroke-1`} />
           <h3 className="text-base font-bold text-slate-800 dark:text-slate-200">No notes written yet</h3>
           <p className="text-xs text-slate-500 dark:text-slate-400 max-w-xs mx-auto mt-1">
             Leave a sweet surprise note or start your couples bucket list together!

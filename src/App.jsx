@@ -153,22 +153,22 @@ const AppContent = () => {
             setCurrentTab(notificationToast.tab || 'chat')
             setNotificationToast(null)
           }}
-          className="fixed top-20 left-1/2 -translate-x-1/2 z-50 w-11/12 max-w-sm p-3 rounded-2xl glass shadow-2xl border border-rose-300/80 dark:border-rose-800/80 flex items-center justify-between cursor-pointer animate-fade-in hover:scale-[1.02] transition-transform"
+          className={`fixed top-20 left-1/2 -translate-x-1/2 z-50 w-11/12 max-w-sm p-3 rounded-2xl glass shadow-2xl border ${currentTheme.border} flex items-center justify-between cursor-pointer animate-fade-in hover:scale-[1.02] transition-transform`}
         >
           <div className="flex items-center gap-2.5 truncate">
             {notificationToast.avatar ? (
               <img
                 src={notificationToast.avatar}
                 alt="Avatar"
-                className="w-8 h-8 rounded-full object-cover shrink-0 ring-1 ring-rose-400"
+                className="w-8 h-8 rounded-full object-cover shrink-0 ring-1 ring-white/50"
               />
             ) : (
-              <div className="w-8 h-8 rounded-full bg-rose-500 text-white flex items-center justify-center font-bold text-xs shrink-0">
+              <div className={`w-8 h-8 rounded-full ${currentTheme.badge} flex items-center justify-center font-bold text-xs shrink-0 shadow-sm`}>
                 💗
               </div>
             )}
             <div className="truncate">
-              <span className="font-bold text-xs text-rose-600 dark:text-rose-400 block truncate">
+              <span className={`font-bold text-xs ${currentTheme.activeText} block truncate`}>
                 {notificationToast.title}
               </span>
               <span className="text-xs text-slate-700 dark:text-slate-300 block truncate">
@@ -177,7 +177,7 @@ const AppContent = () => {
             </div>
           </div>
           <div className="flex items-center gap-1.5 shrink-0 ml-2">
-            <span className="text-[10px] font-semibold text-white bg-rose-500 px-2.5 py-0.5 rounded-full shadow-sm">
+            <span className={`text-[10px] font-semibold ${currentTheme.badge} px-2.5 py-0.5 rounded-full shadow-sm`}>
               View
             </span>
             <button

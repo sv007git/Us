@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react'
 import { Mic, Square, Trash2, Send, Play, Pause, AlertCircle } from 'lucide-react'
+import { useTheme } from '../../context/ThemeContext'
 
 export const getSupportedAudioMimeType = () => {
   if (typeof window === 'undefined' || typeof MediaRecorder === 'undefined') return ''
@@ -20,6 +21,7 @@ export const getSupportedAudioMimeType = () => {
 }
 
 export const VoiceRecorder = ({ onSendAudio, onCancel }) => {
+  const { currentTheme } = useTheme()
   const [isRecording, setIsRecording] = useState(false)
   const [recordedBlob, setRecordedBlob] = useState(null)
   const [audioUrl, setAudioUrl] = useState(null)
@@ -159,7 +161,7 @@ export const VoiceRecorder = ({ onSendAudio, onCancel }) => {
   }
 
   return (
-    <div className="p-3 bg-rose-50/90 dark:bg-rose-950/40 border border-rose-200/80 dark:border-rose-900/50 rounded-2xl flex flex-col gap-2 animate-fade-in">
+    <div className={`p-3 ${currentTheme.softBg} border ${currentTheme.border} rounded-2xl flex flex-col gap-2 animate-fade-in`}>
       {error ? (
         <div className="flex items-center justify-between text-xs text-red-600 dark:text-red-400">
           <div className="flex items-center gap-1.5">
@@ -201,7 +203,7 @@ export const VoiceRecorder = ({ onSendAudio, onCancel }) => {
                   {[40, 80, 60, 100, 70, 90, 50, 75, 95, 60].map((h, i) => (
                     <div
                       key={i}
-                      className="w-1 bg-rose-400 dark:bg-rose-500 rounded-full animate-pulse"
+                      className={`w-1 ${currentTheme.accent} rounded-full animate-pulse`}
                       style={{
                         height: `${h}%`,
                         animationDelay: `${i * 100}ms`,
@@ -217,7 +219,7 @@ export const VoiceRecorder = ({ onSendAudio, onCancel }) => {
                   <button
                     type="button"
                     onClick={togglePreview}
-                    className="p-1.5 rounded-full bg-rose-500 text-white hover:bg-rose-600 transition"
+                    className={`p-1.5 rounded-full ${currentTheme.buttonGrad} text-white transition active:scale-95`}
                   >
                     {isPlayingPreview ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4" />}
                   </button>
@@ -251,7 +253,7 @@ export const VoiceRecorder = ({ onSendAudio, onCancel }) => {
             <button
               type="button"
               onClick={isRecording ? () => { stopRecording(); setTimeout(handleSend, 150); } : handleSend}
-              className="p-2 rounded-full bg-gradient-to-tr from-rose-500 to-pink-500 text-white shadow-md shadow-rose-500/30 hover:opacity-95 transition"
+              className={`p-2 rounded-full ${currentTheme.buttonGrad} text-white shadow-md ${currentTheme.shadow} hover:opacity-95 transition active:scale-95`}
               title="Send voice note"
             >
               <Send className="w-4 h-4" />

@@ -159,7 +159,28 @@ export const ChatView = ({ currentTab = 'chat', onNavigate = null, onShowToast =
           })
         } else {
           playNotificationSound()
+          // Automatically acknowledge message as read to partner
+          channel.send({
+            type: 'broadcast',
+            event: 'messages-read',
+            payload: { reader_id: user?.id },
+          })
         }
+      })
+      .on('broadcast', { event: 'messages-read' }, ({ payload }) => {
+        if (!payload || payload.reader_id === user?.id) return
+        // Partner viewed our sent messages -> turn ticks into double blue ticks
+        setMessages((prev) =>
+          prev.map((m) =>
+            m.sender_id === user?.id
+              ? {
+                  ...m,
+                  is_read: true,
+                  media_metadata: { ...(m.media_metadata || {}), is_read: true },
+                }
+              : m
+          )
+        )
       })
       .on('broadcast', { event: 'edit-message' }, ({ payload }) => {
         if (!payload || !payload.id) return
@@ -242,6 +263,54 @@ export const ChatView = ({ currentTab = 'chat', onNavigate = null, onShowToast =
       if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current)
     }
   }, [coupleSpace?.id, user?.id, currentTab, partner?.display_name, partner?.avatar_url, onNavigate, onShowToast])
+
+  // Automatically mark partner's messages as read when viewing chat
+  const markIncomingAsRead = useCallback(() => {
+    if (!coupleSpace?.id || !user?.id) return
+    if (currentTab !== 'chat') return
+
+    setMessages((prev) => {
+      const hasUnread = prev.some(
+        (m) => m.sender_id !== user.id && !m.is_read && !m.media_metadata?.is_read
+      )
+      if (!hasUnread) return prev
+
+      // Broadcast to partner that their messages have been read
+      chatChannelRef.current?.send({
+        type: 'broadcast',
+        event: 'messages-read',
+        payload: { reader_id: user.id },
+      })
+
+      // Try updating in Supabase
+      if (supabase) {
+        supabase
+          .from('messages')
+          .update({ is_read: true })
+          .eq('couple_space_id', coupleSpace.id)
+          .neq('sender_id', user.id)
+          .then(() => {})
+          .catch(() => {})
+      }
+
+      return prev.map((m) =>
+        m.sender_id !== user.id
+          ? {
+              ...m,
+              is_read: true,
+              media_metadata: { ...(m.media_metadata || {}), is_read: true },
+            }
+          : m
+      )
+    })
+  }, [coupleSpace?.id, currentTab, user?.id])
+
+  useEffect(() => {
+    markIncomingAsRead()
+    const handleFocus = () => markIncomingAsRead()
+    window.addEventListener('focus', handleFocus)
+    return () => window.removeEventListener('focus', handleFocus)
+  }, [markIncomingAsRead])
 
   // Scroll listener to toggle "scroll to bottom" button
   const handleScroll = () => {
@@ -514,7 +583,7 @@ export const ChatView = ({ currentTab = 'chat', onNavigate = null, onShowToast =
             <img
               src={partner.avatar_url}
               alt={partner.display_name || 'Partner'}
-              className="w-7 h-7 rounded-full object-cover border border-rose-300 dark:border-rose-700"
+              className={`w-7 h-7 rounded-full object-cover border ${currentTheme.border}`}
             />
           ) : (
             <div className={`w-7 h-7 rounded-full bg-gradient-to-tr ${currentTheme.primary} text-white flex items-center justify-center font-bold text-xs shadow-sm`}>
@@ -527,7 +596,10 @@ export const ChatView = ({ currentTab = 'chat', onNavigate = null, onShowToast =
             </span>
             <span className="text-[10px] text-slate-400 block -mt-0.5">
               {isPartnerTyping ? (
-                <span className={currentTheme.activeText}>typing...</span>
+                <span className={`font-semibold ${currentTheme.activeText} animate-pulse flex items-center gap-1`}>
+                  <span className="inline-block w-1.5 h-1.5 rounded-full bg-current animate-ping" />
+                  {partner?.display_name || 'My Love'} is typing...
+                </span>
               ) : (
                 'Private end-to-end sanctuary'
               )}
@@ -656,13 +728,13 @@ export const ChatView = ({ currentTab = 'chat', onNavigate = null, onShowToast =
 
       {/* Realtime Partner Typing Indicator */}
       {isPartnerTyping && (
-        <div className={`px-4 py-1.5 text-xs ${currentTheme.activeText} flex items-center gap-1.5 animate-pulse select-none bg-white/60 dark:bg-midnight-900/60 border-t ${currentTheme.border}`}>
+        <div className={`px-4 py-2 text-xs ${currentTheme.activeText} flex items-center gap-2 select-none bg-white/85 dark:bg-midnight-900/85 backdrop-blur-md border-t ${currentTheme.border} transition-all`}>
           <div className="flex gap-1 items-center">
-            <span className={`w-1.5 h-1.5 rounded-full ${currentTheme.badge.split(' ')[0]} animate-bounce`} style={{ animationDelay: '0ms' }} />
-            <span className={`w-1.5 h-1.5 rounded-full ${currentTheme.badge.split(' ')[0]} animate-bounce`} style={{ animationDelay: '150ms' }} />
-            <span className={`w-1.5 h-1.5 rounded-full ${currentTheme.badge.split(' ')[0]} animate-bounce`} style={{ animationDelay: '300ms' }} />
+            <span className={`w-2 h-2 rounded-full ${currentTheme.badge.split(' ')[0]} animate-bounce`} style={{ animationDelay: '0ms' }} />
+            <span className={`w-2 h-2 rounded-full ${currentTheme.badge.split(' ')[0]} animate-bounce`} style={{ animationDelay: '150ms' }} />
+            <span className={`w-2 h-2 rounded-full ${currentTheme.badge.split(' ')[0]} animate-bounce`} style={{ animationDelay: '300ms' }} />
           </div>
-          <span className="italic font-medium">{partner?.display_name || 'My Love'} is typing...</span>
+          <span className="italic font-semibold">{partner?.display_name || 'My Love'} is typing...</span>
         </div>
       )}
 

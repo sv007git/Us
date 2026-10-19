@@ -13,7 +13,7 @@ export const BottomNav = ({ currentTab, setCurrentTab }) => {
   ]
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 z-30 glass safe-bottom border-t border-rose-200/50 dark:border-rose-900/30 transition-colors duration-200">
+    <nav className={`fixed bottom-0 left-0 right-0 z-30 glass safe-bottom border-t ${currentTheme.border} transition-colors duration-200`}>
       <div className="max-w-md mx-auto px-2 h-16 flex items-center justify-around">
         {tabs.map((tab) => {
           const Icon = tab.icon

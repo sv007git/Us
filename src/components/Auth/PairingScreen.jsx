@@ -17,10 +17,12 @@ import {
 } from 'lucide-react'
 import { useCouple } from '../../context/CoupleContext'
 import { useAuth } from '../../context/AuthContext'
+import { useTheme } from '../../context/ThemeContext'
 import { AvatarCropperModal } from '../Profile/AvatarCropperModal'
 import confetti from 'canvas-confetti'
 
 export const PairingScreen = () => {
+  const { currentTheme } = useTheme()
   const { user, profile, updateProfile, signOut, deleteAccount } = useAuth()
   const {
     coupleSpace,
@@ -193,14 +195,14 @@ export const PairingScreen = () => {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-4 bg-gradient-to-br from-rose-50 via-pink-50 to-purple-50 dark:from-midnight-950 dark:via-midnight-900 dark:to-midnight-950">
-      <div className="w-full max-w-md bg-white/90 dark:bg-midnight-900/90 backdrop-blur-xl border border-rose-200/60 dark:border-rose-900/40 rounded-3xl p-7 sm:p-9 shadow-2xl relative">
+    <div className={`min-h-screen flex items-center justify-center p-4 bg-gradient-to-br ${currentTheme.bgGradient}`}>
+      <div className={`w-full max-w-md bg-white/90 dark:bg-midnight-900/90 backdrop-blur-xl border ${currentTheme.border} rounded-3xl p-7 sm:p-9 shadow-2xl relative`}>
         {/* Top Header */}
         <div className="text-center mb-4">
-          <div className="inline-flex p-3 rounded-2xl bg-gradient-to-tr from-rose-400 to-pink-500 text-white shadow-lg shadow-rose-500/25 mb-3">
+          <div className={`inline-flex p-3 rounded-2xl ${currentTheme.buttonGrad} text-white shadow-lg ${currentTheme.shadow} mb-3`}>
             <Heart className="w-7 h-7 fill-current text-white animate-heartbeat" />
           </div>
-          <h2 className="text-2xl font-bold font-romantic text-rose-600 dark:text-rose-400">
+          <h2 className={`text-2xl font-bold font-romantic ${currentTheme.activeText}`}>
             {coupleSpace ? 'Waiting for Your Partner 💌' : 'Connect as a Couple'}
           </h2>
           <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
@@ -211,7 +213,7 @@ export const PairingScreen = () => {
         </div>
 
         {/* Profile Avatar Card with Upload & Crop */}
-        <div className="flex flex-col items-center justify-center mb-5 pb-4 border-b border-rose-100 dark:border-slate-800">
+        <div className={`flex flex-col items-center justify-center mb-5 pb-4 border-b ${currentTheme.borderLight}`}>
           <input
             ref={fileInputRef}
             type="file"
@@ -228,14 +230,14 @@ export const PairingScreen = () => {
               <img
                 src={avatarUrl}
                 alt={profile?.display_name || 'Profile'}
-                className="w-20 h-20 rounded-full object-cover border-4 border-rose-400/80 shadow-lg group-hover:scale-105 transition-transform"
+                className={`w-20 h-20 rounded-full object-cover border-4 ${currentTheme.border} shadow-lg group-hover:scale-105 transition-transform`}
               />
             ) : (
-              <div className="w-20 h-20 rounded-full bg-gradient-to-tr from-rose-400 to-pink-500 flex items-center justify-center text-white shadow-lg shadow-rose-500/25 border-4 border-white dark:border-midnight-800 group-hover:scale-105 transition-transform">
+              <div className={`w-20 h-20 rounded-full ${currentTheme.buttonGrad} flex items-center justify-center text-white shadow-lg ${currentTheme.shadow} border-4 border-white dark:border-midnight-800 group-hover:scale-105 transition-transform`}>
                 <User className="w-10 h-10" />
               </div>
             )}
-            <div className="absolute bottom-0 right-0 p-1.5 rounded-full bg-rose-500 text-white shadow-md group-hover:bg-rose-600 transition">
+            <div className={`absolute bottom-0 right-0 p-1.5 rounded-full ${currentTheme.buttonGrad} text-white shadow-md transition hover:opacity-95`}>
               <Camera className="w-3.5 h-3.5" />
             </div>
           </div>
@@ -247,7 +249,7 @@ export const PairingScreen = () => {
             <button
               type="button"
               onClick={() => fileInputRef.current?.click()}
-              className="text-[11px] font-medium text-rose-500 dark:text-rose-400 hover:underline inline-flex items-center gap-1 mt-0.5"
+              className={`text-[11px] font-medium ${currentTheme.activeText} hover:underline inline-flex items-center gap-1 mt-0.5`}
             >
               <Camera className="w-3 h-3" />
               <span>{avatarUrl ? 'Change Profile Photo' : 'Upload Profile Photo'}</span>
@@ -264,8 +266,8 @@ export const PairingScreen = () => {
         {/* State A: Space Already Created -> Show Invitation Code */}
         {coupleSpace ? (
           <div className="space-y-5">
-            <div className="p-4 rounded-2xl bg-rose-50/70 dark:bg-rose-950/30 border border-rose-200/60 dark:border-rose-900/40 text-center">
-              <span className="text-[11px] font-semibold text-rose-500 uppercase tracking-wider block mb-1">
+            <div className={`p-4 rounded-2xl ${currentTheme.softBg} border ${currentTheme.border} text-center`}>
+              <span className={`text-[11px] font-semibold ${currentTheme.activeText} uppercase tracking-wider block mb-1`}>
                 Your Secret Invitation Code
               </span>
               <div className="text-3xl font-mono font-bold tracking-widest text-slate-900 dark:text-white py-2 select-all">
@@ -280,7 +282,7 @@ export const PairingScreen = () => {
               <button
                 type="button"
                 onClick={copyInviteLink}
-                className="flex-1 py-2.5 px-3 rounded-xl bg-rose-500 hover:bg-rose-600 text-white text-xs font-semibold shadow-md shadow-rose-500/20 flex items-center justify-center gap-1.5 transition active:scale-95"
+                className={`flex-1 py-2.5 px-3 rounded-xl ${currentTheme.buttonGrad} text-white text-xs font-semibold shadow-md ${currentTheme.shadow} flex items-center justify-center gap-1.5 transition active:scale-95`}
               >
                 {copied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
                 {copied ? 'Link Copied!' : 'Copy Invite Link'}
@@ -302,12 +304,12 @@ export const PairingScreen = () => {
               <span>Waiting for your partner to join... This screen will refresh automatically!</span>
             </div>
 
-            <div className="pt-3 border-t border-rose-100 dark:border-slate-800 space-y-2">
+            <div className={`pt-3 border-t ${currentTheme.borderLight} space-y-2`}>
               <div className="flex justify-between items-center">
                 <button
                   type="button"
                   onClick={generateNewInvitation}
-                  className="text-xs text-rose-500 hover:underline flex items-center gap-1"
+                  className={`text-xs ${currentTheme.activeText} hover:underline flex items-center gap-1`}
                 >
                   <RefreshCw className="w-3 h-3" /> Generate New Code
                 </button>
@@ -339,13 +341,13 @@ export const PairingScreen = () => {
         ) : (
           /* State B: No Space Yet -> Create or Join Tabs */
           <div>
-            <div className="flex p-1 bg-rose-100/60 dark:bg-slate-800/80 rounded-2xl mb-5">
+            <div className={`flex p-1 ${currentTheme.softBg} rounded-2xl mb-5`}>
               <button
                 type="button"
                 onClick={() => { setTab('create'); setError(null); }}
                 className={`flex-1 py-2 text-xs font-semibold rounded-xl transition ${
                   tab === 'create'
-                    ? 'bg-white dark:bg-midnight-800 text-rose-600 dark:text-rose-400 shadow-sm'
+                    ? `bg-white dark:bg-midnight-800 ${currentTheme.activeText} shadow-sm`
                     : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'
                 }`}
               >
@@ -356,7 +358,7 @@ export const PairingScreen = () => {
                 onClick={() => { setTab('join'); setError(null); }}
                 className={`flex-1 py-2 text-xs font-semibold rounded-xl transition ${
                   tab === 'join'
-                    ? 'bg-white dark:bg-midnight-800 text-rose-600 dark:text-rose-400 shadow-sm'
+                    ? `bg-white dark:bg-midnight-800 ${currentTheme.activeText} shadow-sm`
                     : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'
                 }`}
               >
@@ -376,7 +378,7 @@ export const PairingScreen = () => {
                     value={spaceName}
                     onChange={(e) => setSpaceName(e.target.value)}
                     placeholder="e.g. Just You & Me, Harish & Love"
-                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white/70 dark:bg-slate-800/60 text-slate-900 dark:text-slate-100 text-sm focus:outline-none focus:ring-2 focus:ring-rose-500"
+                    className={`w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white/70 dark:bg-slate-800/60 text-slate-900 dark:text-slate-100 text-sm focus:outline-none focus:ring-2 ${currentTheme.ring}`}
                   />
                 </div>
 
@@ -390,7 +392,7 @@ export const PairingScreen = () => {
                       type="date"
                       value={anniversaryDate}
                       onChange={(e) => setAnniversaryDate(e.target.value)}
-                      className="w-full pl-10 pr-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white/70 dark:bg-slate-800/60 text-slate-900 dark:text-slate-100 text-sm focus:outline-none focus:ring-2 focus:ring-rose-500"
+                      className={`w-full pl-10 pr-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white/70 dark:bg-slate-800/60 text-slate-900 dark:text-slate-100 text-sm focus:outline-none focus:ring-2 ${currentTheme.ring}`}
                     />
                   </div>
                 </div>
@@ -404,14 +406,14 @@ export const PairingScreen = () => {
                     value={welcomeMessage}
                     onChange={(e) => setWelcomeMessage(e.target.value)}
                     placeholder="Forever and always 💗"
-                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white/70 dark:bg-slate-800/60 text-slate-900 dark:text-slate-100 text-sm focus:outline-none focus:ring-2 focus:ring-rose-500"
+                    className={`w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white/70 dark:bg-slate-800/60 text-slate-900 dark:text-slate-100 text-sm focus:outline-none focus:ring-2 ${currentTheme.ring}`}
                   />
                 </div>
 
                 <button
                   type="submit"
                   disabled={loading}
-                  className="w-full mt-2 py-3 px-4 rounded-xl bg-gradient-to-r from-rose-500 to-pink-600 hover:opacity-95 text-white font-semibold text-sm shadow-md shadow-rose-500/30 flex items-center justify-center space-x-2 transition disabled:opacity-50"
+                  className={`w-full mt-2 py-3 px-4 rounded-xl ${currentTheme.buttonGrad} hover:opacity-95 text-white font-semibold text-sm shadow-md ${currentTheme.shadow} flex items-center justify-center space-x-2 transition disabled:opacity-50`}
                 >
                   {loading ? (
                     <span className="inline-block w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
@@ -438,7 +440,7 @@ export const PairingScreen = () => {
                       value={inviteCodeInput}
                       onChange={(e) => setInviteCodeInput(e.target.value.toUpperCase())}
                       placeholder="e.g. 7K4MZ9WQ"
-                      className="w-full pl-10 pr-3.5 py-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-white/70 dark:bg-slate-800/60 text-slate-900 dark:text-slate-100 font-mono tracking-widest text-base uppercase focus:outline-none focus:ring-2 focus:ring-rose-500"
+                      className={`w-full pl-10 pr-3.5 py-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-white/70 dark:bg-slate-800/60 text-slate-900 dark:text-slate-100 font-mono tracking-widest text-base uppercase focus:outline-none focus:ring-2 ${currentTheme.ring}`}
                     />
                   </div>
                   <p className="text-[11px] text-slate-400 mt-1">
@@ -449,7 +451,7 @@ export const PairingScreen = () => {
                 <button
                   type="submit"
                   disabled={loading || !inviteCodeInput.trim()}
-                  className="w-full py-3 px-4 rounded-xl bg-gradient-to-r from-rose-500 to-pink-600 hover:opacity-95 text-white font-semibold text-sm shadow-md shadow-rose-500/30 flex items-center justify-center space-x-2 transition disabled:opacity-50"
+                  className={`w-full py-3 px-4 rounded-xl ${currentTheme.buttonGrad} hover:opacity-95 text-white font-semibold text-sm shadow-md ${currentTheme.shadow} flex items-center justify-center space-x-2 transition disabled:opacity-50`}
                 >
                   {loading ? (
                     <span className="inline-block w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
@@ -463,7 +465,7 @@ export const PairingScreen = () => {
               </form>
             )}
 
-            <div className="mt-6 pt-4 border-t border-rose-100 dark:border-slate-800 flex items-center justify-between">
+            <div className={`mt-6 pt-4 border-t ${currentTheme.borderLight} flex items-center justify-between`}>
               <button
                 type="button"
                 onClick={() => {

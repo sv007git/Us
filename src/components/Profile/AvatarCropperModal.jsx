@@ -10,6 +10,7 @@ import {
   Sparkles,
   Move,
 } from 'lucide-react'
+import { useTheme } from '../../context/ThemeContext'
 
 export const AvatarCropperModal = ({
   isOpen,
@@ -18,6 +19,7 @@ export const AvatarCropperModal = ({
   onCropComplete,
   isSaving = false,
 }) => {
+  const { currentTheme } = useTheme()
   const [zoom, setZoom] = useState(1)
   const [pan, setPan] = useState({ x: 0, y: 0 })
   const [rotation, setRotation] = useState(0)
@@ -170,11 +172,11 @@ export const AvatarCropperModal = ({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-fade-in text-slate-800 dark:text-slate-100">
-      <div className="w-full max-w-sm rounded-3xl bg-white dark:bg-midnight-900 border border-rose-200/60 dark:border-rose-900/40 p-5 sm:p-6 shadow-2xl space-y-4">
+      <div className={`w-full max-w-sm rounded-3xl bg-white dark:bg-midnight-900 border ${currentTheme.border} p-5 sm:p-6 shadow-2xl space-y-4`}>
         {/* Header */}
-        <div className="flex items-center justify-between border-b border-rose-100 dark:border-slate-800 pb-3">
+        <div className={`flex items-center justify-between border-b ${currentTheme.borderLight} pb-3`}>
           <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-rose-500 to-pink-500 text-white flex items-center justify-center shadow-sm">
+            <div className={`w-8 h-8 rounded-xl ${currentTheme.buttonGrad} text-white flex items-center justify-center shadow-sm`}>
               <Crop className="w-4 h-4" />
             </div>
             <div>
@@ -195,7 +197,7 @@ export const AvatarCropperModal = ({
 
         {/* Interactive Canvas Viewport */}
         <div className="flex flex-col items-center justify-center">
-          <div className="relative rounded-2xl overflow-hidden border border-rose-100 dark:border-slate-800 shadow-inner bg-slate-950 select-none">
+          <div className={`relative rounded-2xl overflow-hidden border ${currentTheme.borderLight} shadow-inner bg-slate-950 select-none`}>
             <canvas
               ref={canvasRef}
               width={280}
@@ -210,7 +212,7 @@ export const AvatarCropperModal = ({
               className="cursor-move touch-none"
             />
             <div className="absolute bottom-2 inset-x-0 mx-auto w-max px-2.5 py-0.5 rounded-full bg-black/60 backdrop-blur-sm text-[10px] text-slate-300 pointer-events-none flex items-center gap-1">
-              <Move className="w-3 h-3 text-rose-400" />
+              <Move className={`w-3 h-3 ${currentTheme.activeText}`} />
               <span>Drag to move</span>
             </div>
           </div>
@@ -228,7 +230,7 @@ export const AvatarCropperModal = ({
               step="0.05"
               value={zoom}
               onChange={(e) => setZoom(parseFloat(e.target.value))}
-              className="flex-1 h-1.5 bg-rose-100 dark:bg-slate-700 rounded-lg appearance-none cursor-pointer accent-rose-500"
+              className="flex-1 h-1.5 bg-slate-200 dark:bg-slate-700 rounded-lg appearance-none cursor-pointer accent-current"
             />
             <ZoomIn className="w-4 h-4" />
           </div>
@@ -238,9 +240,9 @@ export const AvatarCropperModal = ({
             <button
               type="button"
               onClick={() => setRotation((prev) => (prev + 90) % 360)}
-              className="px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 hover:bg-rose-50 dark:hover:bg-slate-800 text-xs text-slate-700 dark:text-slate-300 font-medium flex items-center gap-1.5 transition active:scale-95"
+              className={`px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 ${currentTheme.softHover} text-xs text-slate-700 dark:text-slate-300 font-medium flex items-center gap-1.5 transition active:scale-95`}
             >
-              <RotateCw className="w-3.5 h-3.5 text-rose-500" />
+              <RotateCw className={`w-3.5 h-3.5 ${currentTheme.activeText}`} />
               <span>Rotate</span>
             </button>
             <button
@@ -258,7 +260,7 @@ export const AvatarCropperModal = ({
         </div>
 
         {/* Bottom Actions */}
-        <div className="flex gap-2 pt-2 border-t border-rose-100 dark:border-slate-800">
+        <div className={`flex gap-2 pt-2 border-t ${currentTheme.borderLight}`}>
           <button
             type="button"
             onClick={onClose}
@@ -271,7 +273,7 @@ export const AvatarCropperModal = ({
             type="button"
             onClick={handleSaveCrop}
             disabled={isSaving || !imageElement}
-            className="flex-1 py-2.5 rounded-xl bg-gradient-to-r from-rose-500 to-pink-600 hover:opacity-95 text-white text-xs font-semibold shadow-md shadow-rose-500/25 flex items-center justify-center gap-1.5 transition active:scale-95 disabled:opacity-50"
+            className={`flex-1 py-2.5 rounded-xl ${currentTheme.buttonGrad} hover:opacity-95 text-white text-xs font-semibold shadow-md ${currentTheme.shadow} flex items-center justify-center gap-1.5 transition active:scale-95 disabled:opacity-50`}
           >
             {isSaving ? (
               <span className="inline-block w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />

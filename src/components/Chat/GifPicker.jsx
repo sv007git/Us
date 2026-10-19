@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import { Search, Sparkles, X, Heart, Smile } from 'lucide-react'
+import { useTheme } from '../../context/ThemeContext'
 
 // Built-in curated collection of animated romantic stickers and GIFs
 // Guarantees immediate zero-config functionality out of the box!
@@ -39,6 +40,7 @@ const ANIMATED_STICKERS = [
 ]
 
 export const GifPicker = ({ isOpen, onClose, onSelectMedia }) => {
+  const { currentTheme } = useTheme()
   const [tab, setTab] = useState('stickers') // 'stickers', 'gifs'
   const [searchQuery, setSearchQuery] = useState('')
   const [searchedGifs, setSearchedGifs] = useState([])
@@ -106,11 +108,11 @@ export const GifPicker = ({ isOpen, onClose, onSelectMedia }) => {
 
   return (
     <div className="fixed inset-0 z-40 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/50 backdrop-blur-sm animate-fade-in">
-      <div className="w-full sm:max-w-md bg-white dark:bg-midnight-900 border-t sm:border border-rose-200 dark:border-rose-900/40 rounded-t-3xl sm:rounded-3xl p-4 shadow-2xl flex flex-col h-[70vh] sm:h-[500px]">
+      <div className={`w-full sm:max-w-md bg-white dark:bg-midnight-900 border-t sm:border ${currentTheme.border} rounded-t-3xl sm:rounded-3xl p-4 shadow-2xl flex flex-col h-[70vh] sm:h-[500px]`}>
         {/* Header */}
-        <div className="flex items-center justify-between pb-3 border-b border-rose-100 dark:border-slate-800">
+        <div className={`flex items-center justify-between pb-3 border-b ${currentTheme.borderLight}`}>
           <div className="flex items-center space-x-2">
-            <Sparkles className="w-5 h-5 text-rose-500" />
+            <Sparkles className={`w-5 h-5 ${currentTheme.activeText}`} />
             <h3 className="font-semibold text-sm text-slate-800 dark:text-slate-100">
               Stickers & GIFs 💌
             </h3>
@@ -124,13 +126,13 @@ export const GifPicker = ({ isOpen, onClose, onSelectMedia }) => {
         </div>
 
         {/* Tab switch */}
-        <div className="flex p-1 bg-rose-50 dark:bg-slate-800/80 rounded-xl my-3">
+        <div className={`flex p-1 ${currentTheme.softBg} rounded-xl my-3`}>
           <button
             type="button"
             onClick={() => setTab('stickers')}
             className={`flex-1 py-1.5 text-xs font-semibold rounded-lg transition ${
               tab === 'stickers'
-                ? 'bg-white dark:bg-midnight-800 text-rose-600 dark:text-rose-400 shadow-sm'
+                ? `bg-white dark:bg-midnight-800 ${currentTheme.activeText} shadow-sm`
                 : 'text-slate-500'
             }`}
           >
@@ -141,7 +143,7 @@ export const GifPicker = ({ isOpen, onClose, onSelectMedia }) => {
             onClick={() => setTab('gifs')}
             className={`flex-1 py-1.5 text-xs font-semibold rounded-lg transition ${
               tab === 'gifs'
-                ? 'bg-white dark:bg-midnight-800 text-rose-600 dark:text-rose-400 shadow-sm'
+                ? `bg-white dark:bg-midnight-800 ${currentTheme.activeText} shadow-sm`
                 : 'text-slate-500'
             }`}
           >
@@ -168,7 +170,7 @@ export const GifPicker = ({ isOpen, onClose, onSelectMedia }) => {
                       })
                       onClose()
                     }}
-                    className="flex flex-col items-center justify-center p-3 rounded-2xl bg-rose-50/50 dark:bg-slate-800/50 hover:bg-rose-100/70 dark:hover:bg-rose-950/40 border border-rose-100 dark:border-slate-800 active:scale-95 transition group"
+                    className={`flex flex-col items-center justify-center p-3 rounded-2xl ${currentTheme.softBg} hover:opacity-90 border ${currentTheme.borderLight} active:scale-95 transition group`}
                   >
                     <span className="text-3xl filter drop-shadow-sm group-hover:scale-125 transition-transform duration-200">
                       {sticker.emoji}
@@ -198,7 +200,7 @@ export const GifPicker = ({ isOpen, onClose, onSelectMedia }) => {
                         })
                         onClose()
                       }}
-                      className="group relative rounded-xl overflow-hidden aspect-square border border-rose-100 dark:border-slate-800 active:scale-95 transition"
+                      className={`group relative rounded-xl overflow-hidden aspect-square border ${currentTheme.borderLight} active:scale-95 transition`}
                     >
                       <img
                         src={item.url}
@@ -226,12 +228,12 @@ export const GifPicker = ({ isOpen, onClose, onSelectMedia }) => {
                 onChange={(e) => setSearchQuery(e.target.value)}
                 onKeyDown={(e) => e.key === 'Enter' && searchTenorGifs(searchQuery)}
                 placeholder="Search love, hugs, kisses..."
-                className="w-full pl-9 pr-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-rose-500"
+                className={`w-full pl-9 pr-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 ${currentTheme.ring}`}
               />
             </div>
 
             {apiNotice && (
-              <p className="text-[11px] text-rose-500 bg-rose-50 dark:bg-rose-950/40 p-2 rounded-lg mb-2">
+              <p className={`text-[11px] ${currentTheme.activeText} ${currentTheme.softBg} p-2 rounded-lg mb-2`}>
                 {apiNotice}
               </p>
             )}
@@ -239,7 +241,7 @@ export const GifPicker = ({ isOpen, onClose, onSelectMedia }) => {
             <div className="flex-1 overflow-y-auto">
               {isLoading ? (
                 <div className="h-full flex items-center justify-center">
-                  <div className="w-6 h-6 border-2 border-rose-500 border-t-transparent rounded-full animate-spin" />
+                  <div className={`w-6 h-6 border-2 ${currentTheme.border} border-t-transparent rounded-full animate-spin`} />
                 </div>
               ) : searchedGifs.length > 0 ? (
                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
