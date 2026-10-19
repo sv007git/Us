@@ -15,11 +15,16 @@ import { MemoriesView } from './components/Memories/MemoriesView'
 import { NotesView } from './components/Notes/NotesView'
 import { SettingsView } from './components/Settings/SettingsView'
 import { CallModal } from './components/Calling/CallModal'
-import { Heart, X } from 'lucide-react'
+import { Heart, X, Bell } from 'lucide-react'
+import {
+  getNotificationPermission,
+  requestNotificationPermission,
+  playNotificationSound,
+} from './lib/notificationHelper'
 
 const AppContent = () => {
   const { user, loading: authLoading } = useAuth()
-  const { isPaired, loading: coupleLoading } = useCouple()
+  const { isPaired, partner, loading: coupleLoading } = useCouple()
   const { currentTheme } = useTheme()
 
   const [currentTab, setCurrentTab] = useState(() => {
@@ -28,12 +33,48 @@ const AppContent = () => {
   })
 
   const [notificationToast, setNotificationToast] = useState(null)
+  const [notifPermission, setNotifPermission] = useState(() => getNotificationPermission())
+  const [isPromptDismissed, setIsPromptDismissed] = useState(false)
 
+  // Sync tab state to localStorage
   useEffect(() => {
     if (typeof localStorage !== 'undefined' && currentTab) {
       localStorage.setItem('just_you_me_active_tab', currentTab)
     }
   }, [currentTab])
+
+  // Periodically and on interaction check if notifications are allowed
+  useEffect(() => {
+    const updatePerm = () => {
+      setNotifPermission(getNotificationPermission())
+    }
+    updatePerm()
+
+    // If permission has not been decided yet, prompt on first user touch/click
+    const handleFirstClick = async () => {
+      if (getNotificationPermission() === 'default') {
+        const res = await requestNotificationPermission()
+        setNotifPermission(res)
+        if (res === 'granted') {
+          playNotificationSound()
+        }
+      }
+    }
+
+    window.addEventListener('click', handleFirstClick, { once: true })
+    return () => {
+      window.removeEventListener('click', handleFirstClick)
+    }
+  }, [])
+
+  const handleRequestPermission = async () => {
+    const res = await requestNotificationPermission()
+    setNotifPermission(res)
+    if (res === 'granted') {
+      playNotificationSound()
+      setIsPromptDismissed(true)
+    }
+  }
 
   const handleShowToast = (toast) => {
     setNotificationToast(toast)
@@ -67,17 +108,49 @@ const AppContent = () => {
     return <PairingScreen />
   }
 
+  const isNotificationNeeded =
+    notifPermission !== 'granted' && notifPermission !== 'unsupported' && !isPromptDismissed
+
   // Paired couple -> Main Application Experience
   return (
     <div className={`h-screen h-[100dvh] flex flex-col ${currentTheme.appBg} text-slate-800 dark:text-slate-100 transition-colors duration-300 overflow-hidden relative`}>
       {/* Top Navbar */}
       <Navbar currentTab={currentTab} setCurrentTab={setCurrentTab} />
 
-      {/* In-app Notification Banner Toast when message arrives while browsing another feature */}
+      {/* Persistent Notification Enable Prompt Banner (Asks every time if not enabled) */}
+      {isNotificationNeeded && (
+        <div className={`w-full bg-gradient-to-r ${currentTheme.primary} text-white px-4 py-2.5 flex items-center justify-between text-xs shadow-md z-40 animate-fade-in`}>
+          <div className="flex items-center gap-2 overflow-hidden mr-2">
+            <Bell className="w-4 h-4 animate-bounce shrink-0" />
+            <span className="truncate">
+              <strong>Enable Notifications:</strong> Get alerted for incoming calls, partner messages, and memories!
+            </span>
+          </div>
+          <div className="flex items-center gap-2 shrink-0">
+            <button
+              type="button"
+              onClick={handleRequestPermission}
+              className="px-3 py-1 rounded-full bg-white text-slate-900 font-bold text-xs shadow hover:bg-slate-100 active:scale-95 transition"
+            >
+              Allow Notifications
+            </button>
+            <button
+              type="button"
+              onClick={() => setIsPromptDismissed(true)}
+              className="p-1 hover:bg-white/20 rounded-full text-white/80 transition"
+              title="Dismiss banner"
+            >
+              <X className="w-3.5 h-3.5" />
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* In-app Notification Banner Toast when message or memory arrives while browsing another feature */}
       {notificationToast && (
         <div
           onClick={() => {
-            setCurrentTab('chat')
+            setCurrentTab(notificationToast.tab || 'chat')
             setNotificationToast(null)
           }}
           className="fixed top-20 left-1/2 -translate-x-1/2 z-50 w-11/12 max-w-sm p-3 rounded-2xl glass shadow-2xl border border-rose-300/80 dark:border-rose-800/80 flex items-center justify-between cursor-pointer animate-fade-in hover:scale-[1.02] transition-transform"
@@ -105,7 +178,7 @@ const AppContent = () => {
           </div>
           <div className="flex items-center gap-1.5 shrink-0 ml-2">
             <span className="text-[10px] font-semibold text-white bg-rose-500 px-2.5 py-0.5 rounded-full shadow-sm">
-              Reply
+              View
             </span>
             <button
               type="button"
@@ -133,7 +206,7 @@ const AppContent = () => {
           <WatchRoom />
         </div>
         <div className={`h-full w-full flex-col ${currentTab === 'memories' ? 'flex overflow-y-auto' : 'hidden'}`}>
-          <MemoriesView />
+          <MemoriesView currentTab={currentTab} onNavigate={setCurrentTab} onShowToast={handleShowToast} />
         </div>
         <div className={`h-full w-full flex-col ${currentTab === 'notes' ? 'flex overflow-y-auto' : 'hidden'}`}>
           <NotesView />

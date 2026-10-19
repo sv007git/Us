@@ -30,6 +30,11 @@ import {
   CheckCheck,
   Flame,
   Laugh,
+  Monitor,
+  MonitorOff,
+  FolderPlus,
+  Radio,
+  Clapperboard,
 } from 'lucide-react'
 import { WatchSyncEngine } from '../../lib/syncEngine'
 import { useAuth } from '../../context/AuthContext'
@@ -65,6 +70,9 @@ export const WatchRoom = () => {
     isCallMinimized,
     minimizeCall,
     maximizeCall,
+    isScreenSharing,
+    startScreenShare,
+    stopScreenShare,
   } = useCall()
 
   // Video playback states
@@ -78,6 +86,13 @@ export const WatchRoom = () => {
   const [partnerActionToast, setPartnerActionToast] = useState(null)
   const [videoError, setVideoError] = useState(null)
   const [vaultVideos, setVaultVideos] = useState([])
+
+  // Local device movie streaming & cloud vault upload states
+  const [localMovieFile, setLocalMovieFile] = useState(null)
+  const [isUploadingLocalMovie, setIsUploadingLocalMovie] = useState(false)
+  const [localMovieUploadProgress, setLocalMovieUploadProgress] = useState(0)
+  const [partnerLocalMovieNotice, setPartnerLocalMovieNotice] = useState(null)
+  const localVideoInputRef = useRef(null)
 
   // Screenshot and rich attachment states
   const [isCapturing, setIsCapturing] = useState(false)
@@ -106,11 +121,25 @@ export const WatchRoom = () => {
   const companionAudioRef = useRef(null)
   const remoteVideoRef = useRef(null)
   const localVideoRef = useRef(null)
+  const remoteAudioRef = useRef(null)
+
+  // Dedicated audio playback for in-movie call dock (ensures partner is 100% audible)
+  useEffect(() => {
+    if (remoteAudioRef.current && remoteStream) {
+      remoteAudioRef.current.srcObject = remoteStream
+      remoteAudioRef.current.muted = false
+      remoteAudioRef.current.volume = 1.0
+      remoteAudioRef.current.play().catch((e) => {
+        console.warn('In-movie call audio autoplay catch:', e)
+      })
+    }
+  }, [remoteStream, callState])
 
   // Attach remote and local call streams to in-movie video PIP
   useEffect(() => {
     if (remoteVideoRef.current && remoteStream) {
       remoteVideoRef.current.srcObject = remoteStream
+      remoteVideoRef.current.play().catch(() => {})
     }
   }, [remoteStream, callState])
 
@@ -186,6 +215,12 @@ export const WatchRoom = () => {
                   : m
               )
             )
+          }
+        })
+        .on('broadcast', { event: 'local-movie-announced' }, ({ payload }) => {
+          if (payload && payload.senderId !== user.id) {
+            setPartnerLocalMovieNotice(payload)
+            setPartnerActionToast(`${payload.senderName} loaded local movie: ${payload.fileName}`)
           }
         })
     }
@@ -325,7 +360,90 @@ export const WatchRoom = () => {
     if (!inputUrl.trim()) return
     setVideoUrl(inputUrl.trim())
     setInputUrl('')
+    setLocalMovieFile(null)
     setVideoError(null)
+  }
+
+  // ===================================================================
+  // LOCAL DEVICE MOVIE STREAMING & VAULT UPLOAD
+  // ===================================================================
+  const handleLocalVideoSelect = (e) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    e.target.value = ''
+    setLocalMovieFile(file)
+    const localBlobUrl = URL.createObjectURL(file)
+    setVideoUrl(localBlobUrl)
+    setVideoError(null)
+
+    syncEngineRef.current?.channel?.send({
+      type: 'broadcast',
+      event: 'local-movie-announced',
+      payload: {
+        senderId: user.id,
+        senderName: profile?.display_name || 'Partner',
+        fileName: file.name,
+        fileSize: file.size,
+      },
+    })
+
+    confetti({ particleCount: 25, spread: 50, origin: { y: 0.5 } })
+  }
+
+  const handleStartLiveStream = async () => {
+    try {
+      if (callState === 'idle') {
+        await startCall({ isVideo: true })
+      }
+      await startScreenShare()
+      confetti({ particleCount: 30, spread: 60, origin: { y: 0.6 } })
+      setPartnerActionToast('Streaming your movie/screen to your partner with audio!')
+    } catch (err) {
+      console.warn('Live stream error:', err)
+      setVideoError('Could not start live stream: ' + err.message)
+    }
+  }
+
+  const handleUploadMovieToVault = async () => {
+    if (!localMovieFile || !coupleSpace?.id) return
+    setIsUploadingLocalMovie(true)
+    setLocalMovieUploadProgress(20)
+
+    try {
+      const uploadRes = await uploadCoupleMedia({
+        coupleSpaceId: coupleSpace.id,
+        file: localMovieFile,
+        category: 'video',
+      })
+
+      setLocalMovieUploadProgress(85)
+      const signedUrl = uploadRes.signedUrl || (await getSignedMediaUrl(uploadRes.path, 86400)) || uploadRes.path
+      setVideoUrl(signedUrl)
+
+      await supabase.from('messages').insert({
+        couple_space_id: coupleSpace.id,
+        sender_id: user.id,
+        content: `🎬 Uploaded Movie: ${localMovieFile.name}`,
+        message_type: 'video',
+        media_url: uploadRes.path,
+        media_metadata: { name: localMovieFile.name, size: localMovieFile.size },
+      })
+
+      syncEngineRef.current?.broadcastAction('url_change', { url: signedUrl })
+      confetti({ particleCount: 40, spread: 70, origin: { y: 0.6 } })
+      setPartnerActionToast(`Uploaded "${localMovieFile.name}" to Cloud Vault!`)
+    } catch (err) {
+      console.error('Vault movie upload error:', err)
+      setVideoError('Upload to vault failed: ' + err.message)
+    } finally {
+      setIsUploadingLocalMovie(false)
+      setLocalMovieUploadProgress(0)
+    }
+  }
+
+  const handleEjectLocalMovie = () => {
+    setLocalMovieFile(null)
+    setVideoUrl(DEFAULT_VIDEO_URL)
   }
 
   // ===================================================================
@@ -826,6 +944,7 @@ export const WatchRoom = () => {
         {/* IN-MOVIE FLOATING PARTNER VIDEO OVERLAY (When Call is Active) */}
         {callState === 'connected' && isCallDocked && (
           <div className="absolute top-3 right-3 z-20 w-32 sm:w-44 aspect-[3/4] sm:aspect-video rounded-2xl overflow-hidden border-2 border-rose-400/80 shadow-2xl bg-black/90 backdrop-blur-md animate-scale-up">
+            <audio ref={remoteAudioRef} autoPlay playsInline style={{ display: 'none' }} />
             {isVideoCall ? (
               <video
                 ref={remoteVideoRef}
@@ -983,10 +1102,138 @@ export const WatchRoom = () => {
         </div>
       </div>
 
-      {/* Video Source Picker & URL input */}
+      {/* Hidden Local Video Input */}
+      <input
+        ref={localVideoInputRef}
+        type="file"
+        accept="video/mp4,video/webm,video/ogg,video/x-matroska,video/*"
+        onChange={handleLocalVideoSelect}
+        className="hidden"
+      />
+
+      {/* Partner Local Movie Announcement Card */}
+      {partnerLocalMovieNotice && (
+        <div className="glass rounded-3xl p-3.5 border border-rose-300 dark:border-rose-800 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 animate-fade-in bg-gradient-to-r from-rose-500/10 via-pink-500/10 to-purple-500/10">
+          <div className="flex items-center gap-2.5 overflow-hidden">
+            <div className="w-9 h-9 rounded-2xl bg-rose-500 text-white flex items-center justify-center shrink-0 shadow-md">
+              <Clapperboard className="w-5 h-5" />
+            </div>
+            <div className="truncate">
+              <span className="text-xs font-bold text-rose-600 dark:text-rose-400 block truncate">
+                {partnerLocalMovieNotice.senderName} loaded a local movie:
+              </span>
+              <span className="text-xs text-slate-800 dark:text-slate-100 font-semibold block truncate">
+                🎬 {partnerLocalMovieNotice.fileName}
+              </span>
+            </div>
+          </div>
+          <div className="flex items-center gap-2 w-full sm:w-auto">
+            <button
+              type="button"
+              onClick={() => localVideoInputRef.current?.click()}
+              className="flex-1 sm:flex-none px-3.5 py-1.5 rounded-xl bg-rose-500 hover:bg-rose-600 text-white text-xs font-semibold shadow-md active:scale-95 transition"
+            >
+              Select My Copy to Sync
+            </button>
+            <button
+              type="button"
+              onClick={() => setPartnerLocalMovieNotice(null)}
+              className="p-1 rounded-full text-slate-400 hover:text-slate-600"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* 1. Stream Movie from Local Device Card */}
+      <div className="glass rounded-3xl p-4 border border-rose-200/60 dark:border-rose-900/40 space-y-3">
+        <div className="flex items-center justify-between">
+          <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 flex items-center gap-1.5">
+            <Film className="w-3.5 h-3.5 text-rose-500" /> Play & Stream Movie from Local Device
+          </h3>
+          {localMovieFile && (
+            <span className="text-[11px] font-semibold text-emerald-600 dark:text-emerald-400 flex items-center gap-1">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" /> Playing Local File
+            </span>
+          )}
+        </div>
+
+        {/* Buttons: Pick File from Device & Stream Screen */}
+        <div className="flex flex-wrap items-center gap-2">
+          <button
+            type="button"
+            onClick={() => localVideoInputRef.current?.click()}
+            className="flex-1 min-w-[150px] py-2.5 px-3.5 rounded-2xl bg-gradient-to-r from-rose-500 to-pink-500 hover:opacity-95 text-white text-xs font-bold shadow-md shadow-rose-500/20 active:scale-95 transition flex items-center justify-center gap-2"
+          >
+            <FolderPlus className="w-4 h-4" />
+            <span>{localMovieFile ? 'Change Local Movie File' : 'Choose Movie from Device'}</span>
+          </button>
+
+          {typeof navigator !== 'undefined' && navigator.mediaDevices?.getDisplayMedia && (
+            <button
+              type="button"
+              onClick={isScreenSharing ? stopScreenShare : handleStartLiveStream}
+              className={`flex-1 min-w-[150px] py-2.5 px-3.5 rounded-2xl text-xs font-bold shadow-md active:scale-95 transition flex items-center justify-center gap-2 ${
+                isScreenSharing
+                  ? 'bg-purple-600 text-white ring-2 ring-purple-300'
+                  : 'bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700'
+              }`}
+            >
+              {isScreenSharing ? (
+                <>
+                  <MonitorOff className="w-4 h-4" />
+                  <span>Stop Streaming Screen</span>
+                </>
+              ) : (
+                <>
+                  <Radio className="w-4 h-4 text-rose-500" />
+                  <span>Live Stream Screen & Audio</span>
+                </>
+              )}
+            </button>
+          )}
+        </div>
+
+        {/* Local Active Movie Info & Actions */}
+        {localMovieFile && (
+          <div className="p-3 rounded-2xl bg-rose-50 dark:bg-slate-800/80 border border-rose-200 dark:border-slate-700 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 animate-fade-in">
+            <div className="truncate max-w-full">
+              <span className="text-xs font-bold text-slate-800 dark:text-slate-100 block truncate">
+                🎬 {localMovieFile.name}
+              </span>
+              <span className="text-[11px] text-slate-500 dark:text-slate-400">
+                {(localMovieFile.size / (1024 * 1024)).toFixed(1)} MB • Loaded from local disk
+              </span>
+            </div>
+
+            <div className="flex items-center gap-2 w-full sm:w-auto">
+              <button
+                type="button"
+                onClick={handleUploadMovieToVault}
+                disabled={isUploadingLocalMovie}
+                className="flex-1 sm:flex-none px-3 py-1.5 rounded-xl bg-white dark:bg-slate-700 border border-rose-300 dark:border-slate-600 text-rose-600 dark:text-rose-300 text-xs font-semibold hover:bg-rose-50 transition flex items-center justify-center gap-1.5 disabled:opacity-50"
+              >
+                <Upload className="w-3.5 h-3.5" />
+                <span>{isUploadingLocalMovie ? `Uploading ${localMovieUploadProgress}%...` : 'Upload to Cloud Vault'}</span>
+              </button>
+              <button
+                type="button"
+                onClick={handleEjectLocalMovie}
+                className="p-1.5 rounded-xl text-slate-400 hover:text-red-500 transition"
+                title="Eject local movie"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* 2. Video Source Picker & URL input */}
       <div className="glass rounded-3xl p-4 border border-rose-200/60 dark:border-rose-900/40 space-y-3">
         <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 flex items-center gap-1.5">
-          <LinkIcon className="w-3.5 h-3.5 text-rose-500" /> Play Video by Direct URL
+          <LinkIcon className="w-3.5 h-3.5 text-rose-500" /> Play Video by Direct HTTPS URL
         </h3>
 
         <form onSubmit={handleLoadUrl} className="flex gap-2">
@@ -1015,7 +1262,10 @@ export const WatchRoom = () => {
               {vaultVideos.map((v) => (
                 <button
                   key={v.id}
-                  onClick={() => setVideoUrl(v.media_url)}
+                  onClick={() => {
+                    setVideoUrl(v.media_url)
+                    setLocalMovieFile(null)
+                  }}
                   className="px-2.5 py-1 rounded-lg bg-rose-50 dark:bg-slate-800 text-rose-600 dark:text-rose-400 hover:bg-rose-100 text-xs font-medium truncate max-w-[200px]"
                 >
                   🎬 {v.content || 'Uploaded Video'}

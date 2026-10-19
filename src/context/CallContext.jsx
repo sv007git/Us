@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useEffect, useRef, useState } from 'react'
 import { WebRtcCallManager } from '../lib/webrtc'
 import { playOutgoingRinging, playIncomingRingtone, playCallEndTone, stopCallAudio } from '../lib/audioRing'
+import { showBrowserNotification } from '../lib/notificationHelper'
 import { useAuth } from './AuthContext'
 import { useCouple } from './CoupleContext'
 
@@ -21,9 +22,32 @@ export const CallProvider = ({ children }) => {
   const [callDuration, setCallDuration] = useState(0)
   const [callError, setCallError] = useState(null)
   const [isCallMinimized, setIsCallMinimized] = useState(false)
+  const [isScreenSharing, setIsScreenSharing] = useState(false)
 
   const managerRef = useRef(null)
   const durationIntervalRef = useRef(null)
+  const globalAudioRef = useRef(null)
+
+  // Attach remote stream to dedicated global audio element for guaranteed audio playback
+  useEffect(() => {
+    if (globalAudioRef.current && remoteStream) {
+      try {
+        globalAudioRef.current.srcObject = remoteStream
+        globalAudioRef.current.muted = false
+        globalAudioRef.current.volume = 1.0
+        const playPromise = globalAudioRef.current.play()
+        if (playPromise !== undefined) {
+          playPromise.catch((err) => {
+            console.warn('Audio autoPlay policy caught (will activate on user click):', err)
+          })
+        }
+      } catch (err) {
+        console.warn('Global audio attach warning:', err)
+      }
+    } else if (globalAudioRef.current && !remoteStream) {
+      globalAudioRef.current.srcObject = null
+    }
+  }, [remoteStream, callState])
 
   // Initialize WebRTC signaling channel when user is paired
   useEffect(() => {
@@ -43,11 +67,23 @@ export const CallProvider = ({ children }) => {
         } else if (state === 'incoming') {
           playIncomingRingtone()
           setIncomingCallData(metadata)
+
+          // Trigger browser notification for incoming call
+          showBrowserNotification({
+            title: `Incoming Call from ${metadata?.callerName || partner?.display_name || 'My Love'} 💖`,
+            body: `${metadata?.isVideo ? '🎬 Incoming Video Call' : '🎙️ Incoming Voice Call'} — Click to answer!`,
+            icon: partner?.avatar_url,
+            tag: 'incoming-call',
+            onClick: () => {
+              window.focus()
+            },
+          })
         } else if (state === 'connected') {
           stopCallAudio()
         } else if (state === 'ended') {
           playCallEndTone()
           setIsCallMinimized(false)
+          setIsScreenSharing(false)
           setTimeout(() => {
             setCallState('idle')
             setIncomingCallData(null)
@@ -55,6 +91,7 @@ export const CallProvider = ({ children }) => {
             setRemoteStream(null)
             setCallDuration(0)
             setIsCallMinimized(false)
+            setIsScreenSharing(false)
             stopCallAudio()
           }, 2000)
         }
@@ -75,7 +112,7 @@ export const CallProvider = ({ children }) => {
       manager.destroy()
       stopCallAudio()
     }
-  }, [coupleSpace?.id, user?.id])
+  }, [coupleSpace?.id, user?.id, partner?.display_name, partner?.avatar_url])
 
   // Call duration counter
   useEffect(() => {
@@ -144,14 +181,8 @@ export const CallProvider = ({ children }) => {
     if (managerRef.current) {
       managerRef.current.endCall()
     }
-    setCallState('ended')
-    setTimeout(() => {
-      setCallState('idle')
-      setIncomingCallData(null)
-      setLocalStream(null)
-      setRemoteStream(null)
-      setCallDuration(0)
-    }, 1500)
+    setIsCallMinimized(false)
+    setIsScreenSharing(false)
   }
 
   const toggleMic = () => {
@@ -171,11 +202,35 @@ export const CallProvider = ({ children }) => {
   const switchCam = async () => {
     if (!managerRef.current) return
     try {
-      const newMode = await managerRef.current.switchCamera()
-      setFacingMode(newMode)
+      const mode = await managerRef.current.switchCamera()
+      setFacingMode(mode)
     } catch (err) {
-      setCallError('Could not switch camera: ' + err.message)
+      console.error('Failed switching camera:', err)
     }
+  }
+
+  const startScreenShare = async () => {
+    if (!managerRef.current) return
+    try {
+      const stream = await managerRef.current.startScreenShare()
+      setIsScreenSharing(true)
+      const track = stream.getVideoTracks()[0]
+      if (track) {
+        track.onended = () => {
+          setIsScreenSharing(false)
+        }
+      }
+      return stream
+    } catch (err) {
+      console.error('Screen share error:', err)
+      throw err
+    }
+  }
+
+  const stopScreenShare = async () => {
+    if (!managerRef.current) return
+    await managerRef.current.stopScreenShare()
+    setIsScreenSharing(false)
   }
 
   return (
@@ -204,9 +259,19 @@ export const CallProvider = ({ children }) => {
         minimizeCall: () => setIsCallMinimized(true),
         maximizeCall: () => setIsCallMinimized(false),
         dismissCallError: () => setCallError(null),
+        isScreenSharing,
+        startScreenShare,
+        stopScreenShare,
       }}
     >
       {children}
+      {/* Invisible global audio element to guarantee remote call audio is always audible */}
+      <audio
+        ref={globalAudioRef}
+        autoPlay
+        playsInline
+        style={{ display: 'none' }}
+      />
     </CallContext.Provider>
   )
 }

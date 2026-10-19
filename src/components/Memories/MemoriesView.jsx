@@ -18,9 +18,10 @@ import { useCouple } from '../../context/CoupleContext'
 import { uploadCoupleMedia, getSignedMediaUrl, compressImage, deleteCoupleMedia } from '../../lib/storageHelper'
 import { MediaLightbox } from '../Chat/MediaLightbox'
 import { format } from 'date-fns'
+import { showBrowserNotification, playNotificationSound } from '../../lib/notificationHelper'
 import confetti from 'canvas-confetti'
 
-export const MemoriesView = () => {
+export const MemoriesView = ({ currentTab = 'memories', onNavigate = null, onShowToast = null }) => {
   const { user } = useAuth()
   const { coupleSpace, partner } = useCouple()
 
@@ -105,6 +106,31 @@ export const MemoriesView = () => {
               if (prev.some((m) => m.id === newMemory.id)) return prev
               return [newMemory, ...prev]
             })
+
+            // Trigger notification if created by partner
+            if (newMemory.created_by !== user?.id) {
+              const isViewingMemories = currentTab === 'memories' && !document.hidden
+              if (!isViewingMemories) {
+                showBrowserNotification({
+                  title: `${partner?.display_name || 'My Love'} shared a new memory 📸`,
+                  body: newMemory.title || 'A special moment was just added to your shared album 💖',
+                  icon: newMemory.media_url || partner?.avatar_url,
+                  tag: `mem-${newMemory.id}`,
+                  onClick: () => {
+                    onNavigate?.('memories')
+                  },
+                })
+
+                onShowToast?.({
+                  title: `${partner?.display_name || 'My Love'} added a memory 📸`,
+                  content: newMemory.title || 'New moment added to memories',
+                  avatar: partner?.avatar_url,
+                  tab: 'memories',
+                })
+              } else {
+                playNotificationSound()
+              }
+            }
           } else if (payload.eventType === 'DELETE') {
             const deletedId = payload.old.id
             setMemories((prev) => prev.filter((m) => m.id !== deletedId))
@@ -116,7 +142,7 @@ export const MemoriesView = () => {
     return () => {
       channel.unsubscribe()
     }
-  }, [coupleSpace?.id])
+  }, [coupleSpace?.id, user?.id, currentTab, partner?.display_name, partner?.avatar_url, onNavigate, onShowToast])
 
   // Handle image selection with automatic client-side compression
   const handleFileSelect = async (e) => {

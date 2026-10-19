@@ -53,4 +53,11 @@ describe('WebRTC ICE Server Configuration', () => {
     const hasCloudflareStun = stunUrls.some((u) => u.includes('stun.cloudflare.com'))
     expect(hasCloudflareStun).toBe(true)
   })
+
+  it('includes Twilio and Mozilla STUN servers for fallback resilience', () => {
+    const config = getIceServers()
+    const stunUrls = config.iceServers.map((s) => s.urls).flat()
+    expect(stunUrls.some((u) => u.includes('twilio.com'))).toBe(true)
+    expect(stunUrls.some((u) => u.includes('mozilla.com'))).toBe(true)
+  })
 })

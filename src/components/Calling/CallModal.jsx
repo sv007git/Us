@@ -13,6 +13,8 @@ import {
   Minimize2,
   Maximize2,
   Film,
+  Monitor,
+  MonitorOff,
 } from 'lucide-react'
 import { useCall } from '../../context/CallContext'
 
@@ -38,10 +40,14 @@ export const CallModal = () => {
     toggleCam,
     switchCam,
     dismissCallError,
+    isScreenSharing,
+    startScreenShare,
+    stopScreenShare,
   } = useCall()
 
   const localVideoRef = useRef(null)
   const remoteVideoRef = useRef(null)
+  const remoteAudioRef = useRef(null)
 
   // Attach local stream to video element
   useEffect(() => {
@@ -54,6 +60,19 @@ export const CallModal = () => {
   useEffect(() => {
     if (remoteVideoRef.current && remoteStream) {
       remoteVideoRef.current.srcObject = remoteStream
+      remoteVideoRef.current.play().catch(() => {})
+    }
+  }, [remoteStream, callState])
+
+  // Dedicated remote audio element to ensure audio is always crystal clear in both audio and video calls
+  useEffect(() => {
+    if (remoteAudioRef.current && remoteStream) {
+      remoteAudioRef.current.srcObject = remoteStream
+      remoteAudioRef.current.muted = false
+      remoteAudioRef.current.volume = 1.0
+      remoteAudioRef.current.play().catch((err) => {
+        console.warn('Remote audio autoplay note:', err)
+      })
     }
   }, [remoteStream, callState])
 
@@ -69,6 +88,8 @@ export const CallModal = () => {
   if (isCallMinimized && (callState === 'connected' || callState === 'connecting')) {
     return (
       <div className="fixed bottom-20 right-3 sm:right-6 z-50 w-44 sm:w-56 aspect-[3/4] sm:aspect-video rounded-3xl overflow-hidden shadow-2xl border-2 border-rose-500/60 bg-slate-950/95 backdrop-blur-md animate-scale-up group">
+        <audio ref={remoteAudioRef} autoPlay playsInline style={{ display: 'none' }} />
+
         <div className="w-full h-full relative flex items-center justify-center bg-slate-900">
           {isVideoCall ? (
             <video
@@ -87,7 +108,7 @@ export const CallModal = () => {
               </span>
               <span className="text-[10px] text-emerald-400 flex items-center gap-1 mt-0.5">
                 <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping" />
-                Live Audio
+                Live Audio Connected
               </span>
             </div>
           )}
@@ -163,6 +184,9 @@ export const CallModal = () => {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/90 backdrop-blur-lg animate-fade-in text-white p-4">
+      {/* Permanent remote audio element for full-duplex sound in audio & video calls */}
+      <audio ref={remoteAudioRef} autoPlay playsInline style={{ display: 'none' }} />
+
       {/* Call Error Banner */}
       {callError && (
         <div className="absolute top-6 inset-x-4 max-w-md mx-auto p-3.5 rounded-2xl bg-red-600/90 text-white text-xs shadow-2xl flex items-center justify-between z-50">
@@ -287,21 +311,28 @@ export const CallModal = () => {
               />
             ) : (
               <div className="flex flex-col items-center justify-center space-y-4">
-                <div className="w-32 h-32 rounded-full bg-gradient-to-tr from-rose-500 to-pink-500 flex items-center justify-center shadow-2xl shadow-rose-500/30 animate-pulse overflow-hidden border-2 border-rose-300">
-                  {partner?.avatar_url ? (
-                    <img
-                      src={partner.avatar_url}
-                      alt={partner?.display_name || 'Partner'}
-                      className="w-full h-full object-cover"
-                    />
-                  ) : (
-                    <Heart className="w-16 h-16 fill-current text-white animate-heartbeat" />
-                  )}
+                <div className="relative">
+                  <div className="w-32 h-32 rounded-full bg-gradient-to-tr from-rose-500 to-pink-500 flex items-center justify-center shadow-2xl shadow-rose-500/30 animate-pulse overflow-hidden border-2 border-rose-300">
+                    {partner?.avatar_url ? (
+                      <img
+                        src={partner.avatar_url}
+                        alt={partner?.display_name || 'Partner'}
+                        className="w-full h-full object-cover"
+                      />
+                    ) : (
+                      <Heart className="w-16 h-16 fill-current text-white animate-heartbeat" />
+                    )}
+                  </div>
+                  {/* Glowing Soundwave Ring */}
+                  <span className="absolute inset-0 rounded-full border-2 border-rose-400 animate-ping opacity-30" />
                 </div>
                 <h3 className="text-xl font-bold font-romantic text-rose-300">
                   {partner?.display_name || 'My Love'}
                 </h3>
-                <span className="text-xs text-slate-400">Audio Call Active</span>
+                <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/20 border border-emerald-500/40 text-emerald-300 text-xs font-semibold">
+                  <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+                  <span>Audio Call Active & Connected</span>
+                </div>
               </div>
             )}
 
@@ -343,7 +374,7 @@ export const CallModal = () => {
           </div>
 
           {/* Bottom Floating Control Bar */}
-          <div className="absolute bottom-6 inset-x-0 mx-auto max-w-sm flex items-center justify-center gap-3 sm:gap-4 bg-black/60 backdrop-blur-xl py-3 px-5 rounded-full border border-white/15 z-30 shadow-2xl">
+          <div className="absolute bottom-6 inset-x-0 mx-auto max-w-md flex items-center justify-center gap-3 sm:gap-4 bg-black/60 backdrop-blur-xl py-3 px-5 rounded-full border border-white/15 z-30 shadow-2xl">
             {/* Mute Mic */}
             <button
               onClick={toggleMic}
@@ -381,6 +412,21 @@ export const CallModal = () => {
                   <SwitchCamera className="w-5 h-5" />
                 </button>
               </>
+            )}
+
+            {/* Stream Screen / Local Movie Window */}
+            {typeof navigator !== 'undefined' && navigator.mediaDevices?.getDisplayMedia && (
+              <button
+                onClick={isScreenSharing ? stopScreenShare : startScreenShare}
+                className={`p-3 rounded-full transition ${
+                  isScreenSharing
+                    ? 'bg-purple-600 text-white ring-2 ring-purple-300'
+                    : 'bg-white/15 hover:bg-white/25 text-white'
+                }`}
+                title={isScreenSharing ? 'Stop streaming screen' : 'Stream movie/screen from device'}
+              >
+                {isScreenSharing ? <MonitorOff className="w-5 h-5" /> : <Monitor className="w-5 h-5" />}
+              </button>
             )}
 
             {/* Minimize to PiP button */}

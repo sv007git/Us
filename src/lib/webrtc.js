@@ -10,7 +10,9 @@ export const getIceServers = () => {
     { urls: 'stun:stun2.l.google.com:19302' },
     { urls: 'stun:stun3.l.google.com:19302' },
     { urls: 'stun:stun4.l.google.com:19302' },
+    { urls: 'stun:global.stun.twilio.com:3478' },
     { urls: 'stun:stun.cloudflare.com:3478' },
+    { urls: 'stun:stun.services.mozilla.com' },
   ]
 
   // Check custom TURN config in localStorage first, then env
@@ -237,10 +239,20 @@ export class WebRtcCallManager {
   createPeerConnection() {
     this.peerConnection = new RTCPeerConnection(getIceServers())
 
-    // Remote track listener
+    // Remote track listener (handles both streams and individual audio/video tracks)
     this.peerConnection.ontrack = (event) => {
       if (event.streams && event.streams[0]) {
         this.remoteStream = event.streams[0]
+      } else if (event.track) {
+        if (!this.remoteStream) {
+          this.remoteStream = new MediaStream()
+        }
+        if (!this.remoteStream.getTracks().some((t) => t.id === event.track.id)) {
+          this.remoteStream.addTrack(event.track)
+        }
+      }
+
+      if (this.remoteStream) {
         this.onRemoteStream(this.remoteStream)
       }
     }
@@ -259,6 +271,28 @@ export class WebRtcCallManager {
       }
     }
 
+    // ICE connection state listener for prompt reconnects
+    this.peerConnection.oniceconnectionstatechange = () => {
+      const iceState = this.peerConnection?.iceConnectionState
+      console.log('Peer ICE state:', iceState)
+      if (iceState === 'disconnected' || iceState === 'failed') {
+        if (!this.disconnectTimer) {
+          this.disconnectTimer = setTimeout(() => {
+            this.disconnectTimer = null
+            if (this.peerConnection?.iceConnectionState === 'disconnected' || this.peerConnection?.iceConnectionState === 'failed') {
+              console.warn('ICE disconnected, initiating auto ICE restart...')
+              this.restartIce()
+            }
+          }, 3000)
+        }
+      } else if (iceState === 'connected' || iceState === 'completed') {
+        if (this.disconnectTimer) {
+          clearTimeout(this.disconnectTimer)
+          this.disconnectTimer = null
+        }
+      }
+    }
+
     // Connection state changes
     this.peerConnection.onconnectionstatechange = () => {
       const state = this.peerConnection?.connectionState
@@ -270,7 +304,7 @@ export class WebRtcCallManager {
         }
         this.setCallState('connected')
       } else if (state === 'disconnected') {
-        console.warn('WebRTC disconnected, waiting 7s grace period before attempting ICE restart...')
+        console.warn('WebRTC disconnected, initiating recovery...')
         if (!this.disconnectTimer) {
           this.disconnectTimer = setTimeout(() => {
             this.disconnectTimer = null
@@ -278,7 +312,7 @@ export class WebRtcCallManager {
               console.warn('Still disconnected after grace period, attempting ICE restart...')
               this.restartIce()
             }
-          }, 7000)
+          }, 3000)
         }
       } else if (state === 'failed') {
         console.warn('WebRTC failed, attempting immediate ICE restart...')
@@ -348,7 +382,10 @@ export class WebRtcCallManager {
       await this.peerConnection.setRemoteDescription(new RTCSessionDescription(incomingOffer.sdp))
       this.processPendingCandidates()
 
-      const answer = await this.peerConnection.createAnswer()
+      const answer = await this.peerConnection.createAnswer({
+        offerToReceiveAudio: true,
+        offerToReceiveVideo: incomingOffer.isVideo,
+      })
       await this.peerConnection.setLocalDescription(answer)
 
       this.signalingChannel.send({
@@ -457,6 +494,83 @@ export class WebRtcCallManager {
   }
 
   /**
+   * Starts sharing local screen / movie player window to partner with audio
+   */
+  async startScreenShare() {
+    if (!navigator.mediaDevices?.getDisplayMedia) {
+      throw new Error('Screen / Movie streaming is not supported on this browser.')
+    }
+
+    try {
+      const displayStream = await navigator.mediaDevices.getDisplayMedia({
+        video: { cursor: 'always', width: { ideal: 1920 }, height: { ideal: 1080 } },
+        audio: true, // Captures device / movie audio
+      })
+
+      const videoTrack = displayStream.getVideoTracks()[0]
+      const audioTrack = displayStream.getAudioTracks()[0]
+
+      videoTrack.onended = () => {
+        this.stopScreenShare()
+      }
+
+      // Replace or add video track in peer connection
+      const videoSender = this.peerConnection?.getSenders().find((s) => s.track && s.track.kind === 'video')
+      if (videoSender) {
+        await videoSender.replaceTrack(videoTrack)
+      } else if (this.peerConnection) {
+        this.peerConnection.addTrack(videoTrack, displayStream)
+      }
+
+      // If audio track is provided by system, stream it as well
+      if (audioTrack) {
+        const audioSender = this.peerConnection?.getSenders().find((s) => s.track && s.track.kind === 'audio')
+        if (audioSender) {
+          await audioSender.replaceTrack(audioTrack)
+        } else if (this.peerConnection) {
+          this.peerConnection.addTrack(audioTrack, displayStream)
+        }
+      }
+
+      this.screenStream = displayStream
+      return displayStream
+    } catch (err) {
+      console.warn('Screen share error:', err)
+      throw err
+    }
+  }
+
+  /**
+   * Stops screen share and restores local camera/mic stream
+   */
+  async stopScreenShare() {
+    if (this.screenStream) {
+      this.screenStream.getTracks().forEach((t) => {
+        try {
+          t.stop()
+        } catch (e) {
+          // ignore
+        }
+      })
+      this.screenStream = null
+    }
+
+    // Restore camera video track
+    const cameraVideoTrack = this.localStream?.getVideoTracks()[0]
+    const videoSender = this.peerConnection?.getSenders().find((s) => s.track && s.track.kind === 'video')
+    if (videoSender && cameraVideoTrack) {
+      await videoSender.replaceTrack(cameraVideoTrack)
+    }
+
+    // Restore mic audio track
+    const micAudioTrack = this.localStream?.getAudioTracks()[0]
+    const audioSender = this.peerConnection?.getSenders().find((s) => s.track && s.track.kind === 'audio')
+    if (audioSender && micAudioTrack) {
+      await audioSender.replaceTrack(micAudioTrack)
+    }
+  }
+
+  /**
    * Attempts ICE restart if connection was interrupted (e.g. mobile cell to wifi switch)
    */
   async restartIce() {
@@ -486,6 +600,10 @@ export class WebRtcCallManager {
     if (this.disconnectTimer) {
       clearTimeout(this.disconnectTimer)
       this.disconnectTimer = null
+    }
+
+    if (this.screenStream) {
+      this.stopScreenShare().catch(() => {})
     }
 
     if (this.localStream) {
