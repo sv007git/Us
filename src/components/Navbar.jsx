@@ -10,7 +10,7 @@ export const Navbar = ({ currentTab, setCurrentTab }) => {
   const { profile } = useAuth()
   const { coupleSpace, partner, isPartnerOnline, isPaired } = useCouple()
   const { startCall, callState } = useCall()
-  const { isDarkMode, toggleDarkMode } = useTheme()
+  const { isDarkMode, toggleDarkMode, currentTheme } = useTheme()
 
   const triggerHeartBurst = () => {
     confetti({
@@ -27,7 +27,7 @@ export const Navbar = ({ currentTab, setCurrentTab }) => {
       <div className="max-w-4xl mx-auto px-4 h-16 flex items-center justify-between">
         {/* Left: Branding & Couple Title */}
         <div className="flex items-center space-x-3 cursor-pointer" onClick={triggerHeartBurst}>
-          <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-rose-400 to-pink-500 flex items-center justify-center text-white shadow-md shadow-rose-500/20 active:scale-95 transition-transform overflow-hidden border border-rose-300 dark:border-rose-700">
+          <div className={`w-10 h-10 rounded-full bg-gradient-to-tr ${currentTheme.primary} flex items-center justify-center text-white shadow-md shadow-rose-500/20 active:scale-95 transition-transform overflow-hidden border border-rose-300 dark:border-rose-700`}>
             {profile?.avatar_url ? (
               <img
                 src={profile.avatar_url}
@@ -39,7 +39,7 @@ export const Navbar = ({ currentTab, setCurrentTab }) => {
             )}
           </div>
           <div>
-            <h1 className="text-lg font-bold font-romantic text-rose-600 dark:text-rose-400 tracking-wide flex items-center gap-1.5">
+            <h1 className={`text-lg font-bold font-romantic ${currentTheme.activeText} tracking-wide flex items-center gap-1.5`}>
               {coupleSpace?.name || 'Just You & Me'}
               <span className="text-sm">💗</span>
             </h1>

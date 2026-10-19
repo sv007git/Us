@@ -1,15 +1,26 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react'
-import { Heart, Sparkles, AlertCircle, ArrowDown } from 'lucide-react'
+import {
+  Heart,
+  Sparkles,
+  AlertCircle,
+  ArrowDown,
+  Trash2,
+  MoreVertical,
+  AlertTriangle,
+  RotateCcw,
+  Check,
+} from 'lucide-react'
 import { supabase } from '../../lib/supabaseClient'
 import { useAuth } from '../../context/AuthContext'
 import { useCouple } from '../../context/CoupleContext'
 import { uploadCoupleMedia, getSignedMediaUrl } from '../../lib/storageHelper'
+import { showBrowserNotification, playNotificationSound } from '../../lib/notificationHelper'
 import { MessageBubble } from './MessageBubble'
 import { ChatInput } from './ChatInput'
 import { MediaLightbox } from './MediaLightbox'
 import { format, isToday, isYesterday } from 'date-fns'
 
-export const ChatView = () => {
+export const ChatView = ({ currentTab = 'chat', onNavigate = null, onShowToast = null }) => {
   const { user } = useAuth()
   const { coupleSpace, partner } = useCouple()
 
@@ -23,6 +34,22 @@ export const ChatView = () => {
   const [uploadProgress, setUploadProgress] = useState(0)
   const [showScrollBottom, setShowScrollBottom] = useState(false)
   const [isPartnerTyping, setIsPartnerTyping] = useState(false)
+
+  // Clear chat history modal states
+  const [isClearChatModalOpen, setIsClearChatModalOpen] = useState(false)
+  const [isClearingChat, setIsClearingChat] = useState(false)
+  const [showChatMenu, setShowChatMenu] = useState(false)
+
+  // Locally deleted / hidden message IDs ("Delete for Me")
+  const [hiddenMessageIds, setHiddenMessageIds] = useState(() => {
+    if (typeof localStorage === 'undefined' || !user?.id) return []
+    try {
+      const stored = localStorage.getItem(`just_you_me_hidden_msgs_${user.id}`)
+      return stored ? JSON.parse(stored) : []
+    } catch {
+      return []
+    }
+  })
 
   const messagesEndRef = useRef(null)
   const chatContainerRef = useRef(null)
@@ -44,7 +71,7 @@ export const ChatView = () => {
         .select('*')
         .eq('couple_space_id', coupleSpace.id)
         .order('created_at', { ascending: true })
-        .limit(100)
+        .limit(200)
 
       if (error) throw error
 
@@ -96,6 +123,39 @@ export const ChatView = () => {
         })
         setIsPartnerTyping(false)
         setTimeout(() => scrollToBottom(true), 80)
+
+        // Notification alert
+        const isCurrentlyViewingChat = currentTab === 'chat' && !document.hidden
+        const bodyText =
+          payload.message_type === 'image'
+            ? '📷 Sent a photo'
+            : payload.message_type === 'video'
+            ? '🎬 Sent a video'
+            : payload.message_type === 'audio'
+            ? '🎙️ Sent a voice note'
+            : payload.message_type === 'sticker'
+            ? '💝 Sent a love sticker'
+            : payload.content || 'Sent a message'
+
+        if (!isCurrentlyViewingChat) {
+          showBrowserNotification({
+            title: partner?.display_name || 'My Love 💗',
+            body: bodyText,
+            icon: partner?.avatar_url,
+            tag: `msg-${payload.id}`,
+            onClick: () => {
+              onNavigate?.('chat')
+            },
+          })
+
+          onShowToast?.({
+            title: partner?.display_name || 'My Love',
+            content: bodyText,
+            avatar: partner?.avatar_url,
+          })
+        } else {
+          playNotificationSound()
+        }
       })
       .on('broadcast', { event: 'edit-message' }, ({ payload }) => {
         if (!payload || !payload.id) return
@@ -106,6 +166,9 @@ export const ChatView = () => {
       .on('broadcast', { event: 'delete-message' }, ({ payload }) => {
         if (!payload || !payload.id) return
         setMessages((prev) => prev.filter((m) => m.id !== payload.id))
+      })
+      .on('broadcast', { event: 'clear-chat-history' }, () => {
+        setMessages([])
       })
       .on('broadcast', { event: 'typing' }, ({ payload }) => {
         if (!payload || payload.sender_id === user?.id) return
@@ -129,7 +192,6 @@ export const ChatView = () => {
         async (payload) => {
           if (payload.eventType === 'INSERT') {
             const newMsg = payload.new
-            // Resolve signed URL if needed
             if (newMsg.media_url && !newMsg.media_url.startsWith('http')) {
               newMsg.media_url = (await getSignedMediaUrl(newMsg.media_url, 86400)) || newMsg.media_url
             }
@@ -150,9 +212,7 @@ export const ChatView = () => {
           }
         }
       )
-      .subscribe((status) => {
-        console.log('Realtime chat channel status:', status)
-      })
+      .subscribe()
 
     chatChannelRef.current = channel
 
@@ -161,48 +221,51 @@ export const ChatView = () => {
       channel.unsubscribe()
       if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current)
     }
-  }, [coupleSpace?.id, user?.id])
+  }, [coupleSpace?.id, user?.id, currentTab, partner?.display_name, partner?.avatar_url, onNavigate, onShowToast])
 
-  // Check scroll position to display "Scroll to bottom" button
+  // Scroll listener to toggle "scroll to bottom" button
   const handleScroll = () => {
-    if (!chatContainerRef.current) return
-    const { scrollTop, scrollHeight, clientHeight } = chatContainerRef.current
-    const isFarFromBottom = scrollHeight - scrollTop - clientHeight > 300
-    setShowScrollBottom(isFarFromBottom)
+    const el = chatContainerRef.current
+    if (!el) return
+    const distanceFromBottom = el.scrollHeight - el.scrollTop - el.clientHeight
+    setShowScrollBottom(distanceFromBottom > 250)
   }
 
-  // Send a text message or custom payload
-  const handleSendMessage = async (content, customOptions = {}) => {
-    if (!supabase || !coupleSpace || !user) return
+  // Send message
+  const handleSendMessage = async (text, meta = {}) => {
+    if (!supabase || !user || !coupleSpace) return
+    if (!text && !meta.message_type) return
 
-    const newRecord = {
+    const messageData = {
       couple_space_id: coupleSpace.id,
       sender_id: user.id,
-      content: content || null,
-      message_type: customOptions.message_type || 'text',
-      media_url: customOptions.media_url || null,
-      media_metadata: customOptions.metadata || {},
-      reply_to_id: replyingTo ? replyingTo.id : null,
+      content: text,
+      message_type: meta.message_type || 'text',
+      media_url: meta.media_url || null,
+      media_metadata: meta.metadata || {},
+      reply_to_id: replyingTo?.id || null,
     }
 
     try {
-      const { data, error } = await supabase.from('messages').insert(newRecord).select().single()
+      const { data, error } = await supabase
+        .from('messages')
+        .insert(messageData)
+        .select()
+        .single()
+
       if (error) throw error
 
-      // Optimistically append message immediately to local state
       setMessages((prev) => {
         if (prev.some((m) => m.id === data.id)) return prev
         return [...prev, data]
       })
 
-      // Broadcast immediately to partner over Realtime channel for instant sub-50ms sync
       chatChannelRef.current?.send({
         type: 'broadcast',
         event: 'new-message',
         payload: data,
       })
 
-      // Clear typing indicator
       chatChannelRef.current?.send({
         type: 'broadcast',
         event: 'typing',
@@ -244,7 +307,7 @@ export const ChatView = () => {
 
       await handleSendMessage(file.name, {
         message_type: meta.type || result.category,
-        media_url: result.path, // store the storage path
+        media_url: result.path,
         metadata: {
           name: result.name,
           size: result.size,
@@ -291,8 +354,8 @@ export const ChatView = () => {
     }
   }
 
-  // Delete message
-  const handleDeleteMessage = async (id) => {
+  // Unsend message (Delete for everyone)
+  const handleUnsendMessage = async (id) => {
     if (!supabase || !id) return
     try {
       const { error } = await supabase.from('messages').delete().eq('id', id)
@@ -306,8 +369,49 @@ export const ChatView = () => {
         payload: { id },
       })
     } catch (err) {
-      console.error('Error deleting message:', err)
-      setError('Could not delete message.')
+      console.error('Error unsending message:', err)
+      setError('Could not unsend message.')
+    }
+  }
+
+  // Delete message for me only
+  const handleDeleteForMe = (id) => {
+    if (!id) return
+    setHiddenMessageIds((prev) => {
+      const next = [...prev, id]
+      if (typeof localStorage !== 'undefined' && user?.id) {
+        localStorage.setItem(`just_you_me_hidden_msgs_${user.id}`, JSON.stringify(next))
+      }
+      return next
+    })
+    setMessages((prev) => prev.filter((m) => m.id !== id))
+  }
+
+  // Delete entire chat history for both partners
+  const handleClearChatHistory = async () => {
+    if (!supabase || !coupleSpace?.id) return
+    setIsClearingChat(true)
+    setError(null)
+    try {
+      const { error } = await supabase
+        .from('messages')
+        .delete()
+        .eq('couple_space_id', coupleSpace.id)
+
+      if (error) throw error
+
+      setMessages([])
+      setIsClearChatModalOpen(false)
+
+      chatChannelRef.current?.send({
+        type: 'broadcast',
+        event: 'clear-chat-history',
+      })
+    } catch (err) {
+      console.error('Error clearing chat history:', err)
+      setError('Could not clear chat history: ' + err.message)
+    } finally {
+      setIsClearingChat(false)
     }
   }
 
@@ -328,8 +432,65 @@ export const ChatView = () => {
     )
   }
 
+  // Filter out any messages deleted for me
+  const visibleMessages = messages.filter((m) => !hiddenMessageIds.includes(m.id))
+
   return (
-    <div className="flex-1 flex flex-col h-full min-h-0 relative overflow-hidden bg-rose-50/20 dark:bg-midnight-950/20">
+    <div className="flex-1 flex flex-col h-full min-h-0 relative overflow-hidden bg-transparent">
+      {/* Top Chat Subheader / Action Bar */}
+      <div className="w-full glass border-b border-rose-200/50 dark:border-rose-900/30 px-4 py-2 flex items-center justify-between text-xs shrink-0 z-10">
+        <div className="flex items-center space-x-2">
+          {partner?.avatar_url ? (
+            <img
+              src={partner.avatar_url}
+              alt={partner.display_name || 'Partner'}
+              className="w-7 h-7 rounded-full object-cover border border-rose-300"
+            />
+          ) : (
+            <div className="w-7 h-7 rounded-full bg-rose-500/20 text-rose-500 flex items-center justify-center font-bold">
+              {partner?.display_name?.charAt(0) || 'L'}
+            </div>
+          )}
+          <div>
+            <span className="font-semibold text-slate-800 dark:text-slate-200 block truncate max-w-[140px] sm:max-w-[200px]">
+              {partner?.display_name || 'My Love'}
+            </span>
+            <span className="text-[10px] text-slate-400 block -mt-0.5">
+              {isPartnerTyping ? 'typing...' : 'Private end-to-end sanctuary'}
+            </span>
+          </div>
+        </div>
+
+        {/* Chat options menu */}
+        <div className="relative">
+          <button
+            type="button"
+            onClick={() => setShowChatMenu((prev) => !prev)}
+            className="p-1.5 rounded-full hover:bg-rose-50 dark:hover:bg-slate-800 text-slate-500 hover:text-slate-700 dark:hover:text-slate-200 transition"
+            title="Chat Options"
+            aria-label="Chat options"
+          >
+            <MoreVertical className="w-4 h-4" />
+          </button>
+
+          {showChatMenu && (
+            <div className="absolute right-0 top-full mt-1 w-44 bg-white dark:bg-midnight-900 border border-rose-200 dark:border-rose-900/40 rounded-2xl shadow-xl py-1 text-xs font-medium text-slate-700 dark:text-slate-200 z-30 animate-scale-up">
+              <button
+                type="button"
+                onClick={() => {
+                  setShowChatMenu(false)
+                  setIsClearChatModalOpen(true)
+                }}
+                className="w-full px-3.5 py-2 text-left text-red-500 hover:bg-red-50 dark:hover:bg-red-950/30 flex items-center gap-2"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+                <span>Clear Chat History</span>
+              </button>
+            </div>
+          )}
+        </div>
+      </div>
+
       {/* Error alert */}
       {error && (
         <div className="p-2.5 mx-3 mt-2 rounded-xl bg-red-50 dark:bg-red-950/40 border border-red-200 text-xs text-red-600 dark:text-red-300 flex items-center justify-between z-10">
@@ -353,7 +514,7 @@ export const ChatView = () => {
           <div className="h-full flex items-center justify-center">
             <div className="w-8 h-8 border-3 border-rose-500 border-t-transparent rounded-full animate-spin" />
           </div>
-        ) : messages.length === 0 ? (
+        ) : visibleMessages.length === 0 ? (
           /* Empty State */
           <div className="h-full flex flex-col items-center justify-center text-center p-6 text-slate-400">
             <div className="w-16 h-16 rounded-3xl bg-gradient-to-tr from-rose-100 to-pink-100 dark:from-rose-950/50 dark:to-pink-950/50 flex items-center justify-center text-rose-500 mb-3 shadow-inner">
@@ -373,15 +534,15 @@ export const ChatView = () => {
             </button>
           </div>
         ) : (
-          messages.map((msg, index) => {
+          visibleMessages.map((msg, index) => {
             const isOwn = msg.sender_id === user?.id
             const showDate =
               index === 0 ||
               new Date(msg.created_at).toDateString() !==
-                new Date(messages[index - 1].created_at).toDateString()
+                new Date(visibleMessages[index - 1].created_at).toDateString()
 
             const repliedMsg = msg.reply_to_id
-              ? messages.find((m) => m.id === msg.reply_to_id)
+              ? visibleMessages.find((m) => m.id === msg.reply_to_id)
               : null
 
             return (
@@ -394,7 +555,9 @@ export const ChatView = () => {
                   repliedMessage={repliedMsg}
                   onReply={(m) => setReplyingTo(m)}
                   onEdit={(m) => setEditingMessage(m)}
-                  onDelete={handleDeleteMessage}
+                  onDelete={handleUnsendMessage}
+                  onUnsend={handleUnsendMessage}
+                  onDeleteForMe={handleDeleteForMe}
                   onOpenLightbox={(media) => setActiveLightboxMedia(media)}
                 />
               </React.Fragment>
@@ -446,6 +609,45 @@ export const ChatView = () => {
         media={activeLightboxMedia}
         onClose={() => setActiveLightboxMedia(null)}
       />
+
+      {/* Clear Chat History Confirmation Modal */}
+      {isClearChatModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in">
+          <div className="w-full max-w-sm rounded-3xl bg-white dark:bg-midnight-900 border border-red-200 dark:border-red-900/60 p-6 shadow-2xl space-y-4">
+            <div className="w-12 h-12 rounded-2xl bg-red-100 dark:bg-red-950/60 text-red-600 dark:text-red-400 flex items-center justify-center mx-auto">
+              <Trash2 className="w-6 h-6" />
+            </div>
+
+            <div className="text-center space-y-1">
+              <h3 className="text-base font-bold text-slate-900 dark:text-white">
+                Clear Chat History?
+              </h3>
+              <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
+                This will <span className="font-semibold text-red-600 dark:text-red-400">permanently delete all messages</span>, photos, and voice notes in this conversation for both you and your partner. This cannot be undone.
+              </p>
+            </div>
+
+            <div className="flex gap-2 pt-2">
+              <button
+                type="button"
+                onClick={() => setIsClearChatModalOpen(false)}
+                disabled={isClearingChat}
+                className="flex-1 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 text-xs font-semibold hover:bg-slate-100 dark:hover:bg-slate-800 transition"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleClearChatHistory}
+                disabled={isClearingChat}
+                className="flex-1 py-2.5 rounded-xl bg-red-600 hover:bg-red-700 text-white text-xs font-semibold shadow-md shadow-red-600/30 transition active:scale-95 disabled:opacity-50"
+              >
+                {isClearingChat ? 'Clearing...' : 'Clear All Messages'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

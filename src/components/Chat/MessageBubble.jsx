@@ -12,6 +12,8 @@ import {
   CheckCheck,
   CornerDownRight,
   Sparkles,
+  EyeOff,
+  Undo2,
 } from 'lucide-react'
 import { format } from 'date-fns'
 
@@ -23,6 +25,8 @@ export const MessageBubble = ({
   onReply,
   onEdit,
   onDelete,
+  onUnsend,
+  onDeleteForMe,
   onOpenLightbox,
 }) => {
   const [showMenu, setShowMenu] = useState(false)
@@ -346,14 +350,28 @@ export const MessageBubble = ({
             {isOwn && (
               <button
                 onClick={() => {
-                  onDelete?.(message.id)
+                  if (onUnsend) onUnsend(message.id)
+                  else onDelete?.(message.id, 'everyone')
                   setShowMenu(false)
                 }}
                 className="w-full px-3 py-1.5 text-left text-red-500 hover:bg-red-50 dark:hover:bg-red-950/30 flex items-center gap-2"
+                title="Unsend for everyone"
               >
-                <Trash2 className="w-3.5 h-3.5" /> Delete
+                <Trash2 className="w-3.5 h-3.5" /> Unsend
               </button>
             )}
+
+            <button
+              onClick={() => {
+                if (onDeleteForMe) onDeleteForMe(message.id)
+                else onDelete?.(message.id, 'me')
+                setShowMenu(false)
+              }}
+              className="w-full px-3 py-1.5 text-left text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 flex items-center gap-2"
+              title="Delete for me only"
+            >
+              <EyeOff className="w-3.5 h-3.5" /> Delete for me
+            </button>
           </div>
         )}
       </div>

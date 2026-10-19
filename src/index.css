@@ -14,6 +14,43 @@
     --color-border: #fecdd3;
   }
 
+  /* Specific theme overrides */
+  :root[data-theme="blush"] {
+    --color-accent: #f43f5e;
+    --color-accent-light: #ffe4e6;
+    --color-border: #fecdd3;
+  }
+  :root[data-theme="rose"] {
+    --color-accent: #e11d48;
+    --color-accent-light: #ffe4e6;
+    --color-border: #fda4af;
+  }
+  :root[data-theme="lavender"] {
+    --color-accent: #a855f7;
+    --color-accent-light: #f3e8ff;
+    --color-border: #e9d5ff;
+  }
+  :root[data-theme="midnight"] {
+    --color-accent: #6366f1;
+    --color-accent-light: #e0e7ff;
+    --color-border: #c7d2fe;
+  }
+  :root[data-theme="sunset"] {
+    --color-accent: #f97316;
+    --color-accent-light: #ffedd5;
+    --color-border: #fed7aa;
+  }
+  :root[data-theme="ocean"] {
+    --color-accent: #06b6d4;
+    --color-accent-light: #cffafe;
+    --color-border: #a5f3fc;
+  }
+  :root[data-theme="emerald"] {
+    --color-accent: #10b981;
+    --color-accent-light: #d1fae5;
+    --color-border: #a7f3d0;
+  }
+
   .dark {
     --color-bg-primary: #0c080f;
     --color-surface: #17111e;
@@ -23,6 +60,35 @@
     --color-text-main: #f9fafb;
     --color-text-muted: #9ca3af;
     --color-border: #3b2034;
+  }
+
+  .dark[data-theme="blush"] {
+    --color-accent: #fb7185;
+    --color-border: #3b2034;
+  }
+  .dark[data-theme="rose"] {
+    --color-accent: #f43f5e;
+    --color-border: #4c1126;
+  }
+  .dark[data-theme="lavender"] {
+    --color-accent: #c084fc;
+    --color-border: #38154e;
+  }
+  .dark[data-theme="midnight"] {
+    --color-accent: #818cf8;
+    --color-border: #1e1b4b;
+  }
+  .dark[data-theme="sunset"] {
+    --color-accent: #fb923c;
+    --color-border: #431407;
+  }
+  .dark[data-theme="ocean"] {
+    --color-accent: #22d3ee;
+    --color-border: #083344;
+  }
+  .dark[data-theme="emerald"] {
+    --color-accent: #34d399;
+    --color-border: #064e3b;
   }
 
   /* Smooth scrolling and native feel */
@@ -53,26 +119,27 @@
   background: transparent;
 }
 ::-webkit-scrollbar-thumb {
-  background: rgba(244, 63, 94, 0.25);
+  background: var(--color-accent);
+  opacity: 0.3;
   border-radius: 9999px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(244, 63, 94, 0.5);
+  opacity: 0.6;
 }
 
 /* Glassmorphism utility */
 .glass {
-  background: rgba(255, 255, 255, 0.75);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  border: 1px solid rgba(254, 205, 211, 0.5);
+  background: rgba(255, 255, 255, 0.78);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  border: 1px solid var(--color-border);
 }
 
 .dark .glass {
-  background: rgba(26, 17, 32, 0.85);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  border: 1px solid rgba(251, 113, 133, 0.15);
+  background: rgba(20, 14, 26, 0.82);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  border: 1px solid var(--color-border);
 }
 
 /* Delicate floating heart effect */

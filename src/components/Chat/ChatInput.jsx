@@ -14,6 +14,7 @@ import {
 } from 'lucide-react'
 import { VoiceRecorder } from './VoiceRecorder'
 import { GifPicker } from './GifPicker'
+import { compressImage } from '../../lib/storageHelper'
 import confetti from 'canvas-confetti'
 
 export const ChatInput = ({
@@ -99,12 +100,20 @@ export const ChatInput = ({
     }
   }
 
-  const handleFileChange = (e) => {
+  const handleFileChange = async (e) => {
     const file = e.target.files?.[0]
     if (!file) return
-    onSendMedia?.(file)
-    // Clear input so same file can be reselected if needed
     e.target.value = ''
+    try {
+      if (file.type?.startsWith('image/') && file.type !== 'image/gif') {
+        const compressed = await compressImage(file, { maxWidth: 1600, maxHeight: 1600, quality: 0.82 })
+        onSendMedia?.(compressed)
+      } else {
+        onSendMedia?.(file)
+      }
+    } catch {
+      onSendMedia?.(file)
+    }
   }
 
   const handleSendHeart = () => {

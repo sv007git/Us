@@ -8,11 +8,14 @@ import {
   Upload,
   Sparkles,
   Loader2,
+  Trash2,
+  AlertTriangle,
+  Check,
 } from 'lucide-react'
 import { supabase } from '../../lib/supabaseClient'
 import { useAuth } from '../../context/AuthContext'
 import { useCouple } from '../../context/CoupleContext'
-import { uploadCoupleMedia, getSignedMediaUrl } from '../../lib/storageHelper'
+import { uploadCoupleMedia, getSignedMediaUrl, compressImage, deleteCoupleMedia } from '../../lib/storageHelper'
 import { MediaLightbox } from '../Chat/MediaLightbox'
 import { format } from 'date-fns'
 import confetti from 'canvas-confetti'
@@ -33,7 +36,13 @@ export const MemoriesView = () => {
   const [selectedFile, setSelectedFile] = useState(null)
   const [previewUrl, setPreviewUrl] = useState(null)
   const [isUploading, setIsUploading] = useState(false)
+  const [isCompressing, setIsCompressing] = useState(false)
+  const [compressionInfo, setCompressionInfo] = useState(null)
   const [error, setError] = useState(null)
+
+  // Delete moment modal state
+  const [memoryToDelete, setMemoryToDelete] = useState(null)
+  const [isDeleting, setIsDeleting] = useState(false)
 
   const fileInputRef = useRef(null)
 
@@ -72,12 +81,79 @@ export const MemoriesView = () => {
     fetchMemories()
   }, [coupleSpace?.id])
 
-  const handleFileSelect = (e) => {
+  // Realtime subscription for memories (instant add/delete synchronization)
+  useEffect(() => {
+    if (!supabase || !coupleSpace?.id) return
+
+    const channel = supabase
+      .channel(`couple_memories_${coupleSpace.id}`)
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'memories',
+          filter: `couple_space_id=eq.${coupleSpace.id}`,
+        },
+        async (payload) => {
+          if (payload.eventType === 'INSERT') {
+            const newMemory = payload.new
+            if (newMemory.media_url && !newMemory.media_url.startsWith('http')) {
+              newMemory.media_url = (await getSignedMediaUrl(newMemory.media_url, 86400)) || newMemory.media_url
+            }
+            setMemories((prev) => {
+              if (prev.some((m) => m.id === newMemory.id)) return prev
+              return [newMemory, ...prev]
+            })
+          } else if (payload.eventType === 'DELETE') {
+            const deletedId = payload.old.id
+            setMemories((prev) => prev.filter((m) => m.id !== deletedId))
+          }
+        }
+      )
+      .subscribe()
+
+    return () => {
+      channel.unsubscribe()
+    }
+  }, [coupleSpace?.id])
+
+  // Handle image selection with automatic client-side compression
+  const handleFileSelect = async (e) => {
     const file = e.target.files?.[0]
     if (!file) return
-    setSelectedFile(file)
-    const url = URL.createObjectURL(file)
-    setPreviewUrl(url)
+
+    const origSizeMb = (file.size / (1024 * 1024)).toFixed(2)
+    setIsCompressing(true)
+    setCompressionInfo(null)
+
+    try {
+      // Downscale and compress image client-side to max 1600x1600, quality 0.82
+      const compressed = await compressImage(file, {
+        maxWidth: 1600,
+        maxHeight: 1600,
+        quality: 0.82,
+      })
+
+      const compSizeKb = Math.round(compressed.size / 1024)
+      const pctSaved = Math.round((1 - compressed.size / file.size) * 100)
+
+      setSelectedFile(compressed)
+      setCompressionInfo({
+        orig: `${origSizeMb} MB`,
+        comp: `${compSizeKb} KB`,
+        saved: pctSaved > 0 ? `${pctSaved}% smaller` : null,
+      })
+
+      const url = URL.createObjectURL(compressed)
+      setPreviewUrl(url)
+    } catch (err) {
+      console.warn('Image compression fallback:', err)
+      setSelectedFile(file)
+      setPreviewUrl(URL.createObjectURL(file))
+    } finally {
+      setIsCompressing(false)
+    }
   }
 
   const handleAddMemory = async (e) => {
@@ -87,7 +163,7 @@ export const MemoriesView = () => {
     setError(null)
 
     try {
-      // 1. Upload to couple-media private storage
+      // 1. Upload compressed image to couple-media private storage
       const uploaded = await uploadCoupleMedia({
         coupleSpaceId: coupleSpace.id,
         file: selectedFile,
@@ -112,12 +188,37 @@ export const MemoriesView = () => {
       setDescription('')
       setSelectedFile(null)
       setPreviewUrl(null)
+      setCompressionInfo(null)
       fetchMemories()
     } catch (err) {
       console.error('Error adding memory:', err)
       setError(err.message || 'Could not save this memory.')
     } finally {
       setIsUploading(false)
+    }
+  }
+
+  const handleDeleteMemory = async () => {
+    if (!supabase || !memoryToDelete?.id) return
+    setIsDeleting(true)
+    try {
+      // 1. Delete from Supabase memories table
+      const { error } = await supabase.from('memories').delete().eq('id', memoryToDelete.id)
+      if (error) throw error
+
+      // 2. Delete file from private storage
+      if (memoryToDelete.media_url) {
+        await deleteCoupleMedia(memoryToDelete.media_url)
+      }
+
+      // 3. Remove from local state
+      setMemories((prev) => prev.filter((m) => m.id !== memoryToDelete.id))
+      setMemoryToDelete(null)
+    } catch (err) {
+      console.error('Error deleting memory:', err)
+      setError(err.message || 'Could not delete memory.')
+    } finally {
+      setIsDeleting(false)
     }
   }
 
@@ -154,7 +255,12 @@ export const MemoriesView = () => {
         </div>
 
         <button
-          onClick={() => setIsAddModalOpen(true)}
+          onClick={() => {
+            setCompressionInfo(null)
+            setSelectedFile(null)
+            setPreviewUrl(null)
+            setIsAddModalOpen(true)
+          }}
           className="py-2 px-3.5 rounded-full bg-rose-500 hover:bg-rose-600 text-white text-xs font-semibold shadow-md shadow-rose-500/20 active:scale-95 transition flex items-center gap-1.5"
         >
           <Plus className="w-4 h-4" />
@@ -202,21 +308,39 @@ export const MemoriesView = () => {
                   loading="lazy"
                 />
 
-                {/* Favorite Heart Button */}
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    e.stopPropagation()
-                    toggleFavorite(m.id, m.is_favorite)
-                  }}
-                  className={`absolute top-3 right-3 p-2 rounded-full backdrop-blur-md transition ${
-                    m.is_favorite
-                      ? 'bg-rose-500 text-white shadow-md'
-                      : 'bg-black/40 text-white/80 hover:text-white'
-                  }`}
-                >
-                  <Heart className={`w-4 h-4 ${m.is_favorite ? 'fill-current' : ''}`} />
-                </button>
+                {/* Floating Actions on Thumbnail */}
+                <div className="absolute top-3 right-3 flex items-center gap-1.5">
+                  {/* Delete / Unsend Button */}
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      setMemoryToDelete(m)
+                    }}
+                    className="p-2 rounded-full bg-black/40 hover:bg-red-600 text-white/80 hover:text-white backdrop-blur-md transition shadow-sm"
+                    title="Delete moment"
+                    aria-label="Delete moment"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                  </button>
+
+                  {/* Favorite Heart Button */}
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      toggleFavorite(m.id, m.is_favorite)
+                    }}
+                    className={`p-2 rounded-full backdrop-blur-md transition shadow-sm ${
+                      m.is_favorite
+                        ? 'bg-rose-500 text-white'
+                        : 'bg-black/40 text-white/80 hover:text-white'
+                    }`}
+                    title={m.is_favorite ? 'Favorited' : 'Favorite'}
+                  >
+                    <Heart className={`w-3.5 h-3.5 ${m.is_favorite ? 'fill-current' : ''}`} />
+                  </button>
+                </div>
               </div>
 
               {/* Memory Details */}
@@ -271,23 +395,49 @@ export const MemoriesView = () => {
                 />
 
                 {previewUrl ? (
-                  <div
-                    onClick={() => fileInputRef.current?.click()}
-                    className="aspect-video w-full rounded-2xl overflow-hidden cursor-pointer relative group border border-rose-200 dark:border-rose-800"
-                  >
-                    <img src={previewUrl} alt="Preview" className="w-full h-full object-cover" />
-                    <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition flex items-center justify-center text-white text-xs font-semibold">
-                      Change Photo
+                  <div className="space-y-2">
+                    <div
+                      onClick={() => fileInputRef.current?.click()}
+                      className="aspect-video w-full rounded-2xl overflow-hidden cursor-pointer relative group border border-rose-200 dark:border-rose-800"
+                    >
+                      <img src={previewUrl} alt="Preview" className="w-full h-full object-cover" />
+                      <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition flex items-center justify-center text-white text-xs font-semibold">
+                        Change Photo
+                      </div>
                     </div>
+
+                    {/* Compression Optimization Badge */}
+                    {compressionInfo && (
+                      <div className="p-2.5 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800/50 text-[11px] text-emerald-700 dark:text-emerald-300 flex items-center justify-between">
+                        <div className="flex items-center gap-1.5 font-medium">
+                          <Check className="w-3.5 h-3.5 text-emerald-500" />
+                          <span>Photo optimized for instant upload</span>
+                        </div>
+                        <span className="font-semibold font-mono text-[10px] bg-emerald-100 dark:bg-emerald-900/60 px-2 py-0.5 rounded-full">
+                          {compressionInfo.comp} {compressionInfo.saved ? `(${compressionInfo.saved})` : ''}
+                        </span>
+                      </div>
+                    )}
                   </div>
                 ) : (
                   <button
                     type="button"
                     onClick={() => fileInputRef.current?.click()}
-                    className="w-full h-36 rounded-2xl border-2 border-dashed border-rose-200 dark:border-rose-800 hover:border-rose-400 bg-rose-50/50 dark:bg-slate-800/40 flex flex-col items-center justify-center text-slate-500 hover:text-rose-500 transition"
+                    disabled={isCompressing}
+                    className="w-full h-36 rounded-2xl border-2 border-dashed border-rose-200 dark:border-rose-800 hover:border-rose-400 bg-rose-50/50 dark:bg-slate-800/40 flex flex-col items-center justify-center text-slate-500 hover:text-rose-500 transition disabled:opacity-50"
                   >
-                    <Upload className="w-6 h-6 mb-1 text-rose-400" />
-                    <span className="text-xs font-medium">Select a special photo</span>
+                    {isCompressing ? (
+                      <>
+                        <Loader2 className="w-6 h-6 mb-1 text-rose-500 animate-spin" />
+                        <span className="text-xs font-medium">Compressing & optimizing photo...</span>
+                      </>
+                    ) : (
+                      <>
+                        <Upload className="w-6 h-6 mb-1 text-rose-400" />
+                        <span className="text-xs font-medium">Select a special photo</span>
+                        <span className="text-[10px] text-slate-400 mt-0.5">Automatically compressed for fast upload</span>
+                      </>
+                    )}
                   </button>
                 )}
               </div>
@@ -342,7 +492,7 @@ export const MemoriesView = () => {
                 </button>
                 <button
                   type="submit"
-                  disabled={isUploading}
+                  disabled={isUploading || isCompressing}
                   className="px-5 py-2.5 bg-rose-500 hover:bg-rose-600 text-white text-xs font-semibold rounded-xl shadow-md shadow-rose-500/20 disabled:opacity-50 flex items-center gap-1.5"
                 >
                   {isUploading ? (
@@ -356,6 +506,52 @@ export const MemoriesView = () => {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Delete / Unsend Confirmation Modal */}
+      {memoryToDelete && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in">
+          <div className="w-full max-w-sm rounded-3xl bg-white dark:bg-midnight-900 border border-red-200 dark:border-red-900/60 p-6 shadow-2xl space-y-4">
+            <div className="w-12 h-12 rounded-2xl bg-red-100 dark:bg-red-950/60 text-red-600 dark:text-red-400 flex items-center justify-center mx-auto">
+              <Trash2 className="w-6 h-6" />
+            </div>
+
+            <div className="text-center space-y-1">
+              <h3 className="text-base font-bold text-slate-900 dark:text-white">
+                Delete this Moment?
+              </h3>
+              <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
+                Are you sure you want to delete <span className="font-semibold text-slate-800 dark:text-slate-200">"{memoryToDelete.title}"</span>? This will unsend and permanently remove it from your shared memories vault for both of you.
+              </p>
+            </div>
+
+            <div className="flex gap-2 pt-2">
+              <button
+                type="button"
+                onClick={() => setMemoryToDelete(null)}
+                disabled={isDeleting}
+                className="flex-1 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 text-xs font-semibold hover:bg-slate-100 dark:hover:bg-slate-800 transition"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleDeleteMemory}
+                disabled={isDeleting}
+                className="flex-1 py-2.5 rounded-xl bg-red-600 hover:bg-red-700 text-white text-xs font-semibold shadow-md shadow-red-600/30 transition active:scale-95 disabled:opacity-50 flex items-center justify-center gap-1.5"
+              >
+                {isDeleting ? (
+                  <>
+                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                    <span>Deleting...</span>
+                  </>
+                ) : (
+                  <span>Delete Moment</span>
+                )}
+              </button>
+            </div>
           </div>
         </div>
       )}

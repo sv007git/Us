@@ -21,9 +21,9 @@ export const validateFile = (file, expectedCategory = null) => {
 
   let category = expectedCategory
   if (!category) {
-    if (file.type.startsWith('image/')) category = 'image'
-    else if (file.type.startsWith('audio/')) category = 'audio'
-    else if (file.type.startsWith('video/')) category = 'video'
+    if (file.type?.startsWith('image/')) category = 'image'
+    else if (file.type?.startsWith('audio/')) category = 'audio'
+    else if (file.type?.startsWith('video/')) category = 'video'
     else category = 'document'
   }
 
@@ -34,11 +34,85 @@ export const validateFile = (file, expectedCategory = null) => {
   }
 
   const allowed = ALLOWED_MIME_TYPES[category]
-  if (allowed && !allowed.includes(file.type)) {
+  if (allowed && file.type && !allowed.includes(file.type)) {
     throw new Error(`Unsupported file format: ${file.type}. Allowed formats: ${allowed.join(', ')}`)
   }
 
   return { isValid: true, category }
+}
+
+/**
+ * Client-side image compression & downscaling before upload.
+ * Reduces 5MB-20MB smartphone photos to crisp ~150-300KB JPEGs.
+ */
+export const compressImage = async (
+  file,
+  {
+    maxWidth = 1600,
+    maxHeight = 1600,
+    quality = 0.82,
+    mimeType = 'image/jpeg',
+  } = {}
+) => {
+  if (!file || !file.type?.startsWith('image/') || file.type === 'image/gif') {
+    return file
+  }
+
+  // Gracefully return original file if running outside browser (e.g. Node vitest)
+  if (typeof window === 'undefined' || typeof document === 'undefined' || typeof Image === 'undefined') {
+    return file
+  }
+
+  return new Promise((resolve) => {
+    const reader = new FileReader()
+    reader.onload = (e) => {
+      const img = new Image()
+      img.onload = () => {
+        let width = img.width
+        let height = img.height
+
+        if (width > maxWidth || height > maxHeight) {
+          const ratio = Math.min(maxWidth / width, maxHeight / height)
+          width = Math.round(width * ratio)
+          height = Math.round(height * ratio)
+        }
+
+        const canvas = document.createElement('canvas')
+        canvas.width = width
+        canvas.height = height
+        const ctx = canvas.getContext('2d')
+
+        if (mimeType === 'image/jpeg') {
+          ctx.fillStyle = '#ffffff'
+          ctx.fillRect(0, 0, width, height)
+        }
+
+        ctx.drawImage(img, 0, 0, width, height)
+
+        canvas.toBlob(
+          (blob) => {
+            if (!blob || blob.size >= file.size) {
+              resolve(file)
+              return
+            }
+            const baseName = file.name.replace(/\.[^/.]+$/, '')
+            const ext = mimeType === 'image/webp' ? '.webp' : '.jpg'
+            const compressedFile = new File([blob], `${baseName}${ext}`, {
+              type: mimeType,
+              lastModified: Date.now(),
+            })
+            resolve(compressedFile)
+          },
+          mimeType,
+          quality
+        )
+      }
+      img.onerror = () => resolve(file)
+      img.src = e.target.result
+    }
+    reader.onerror = () => resolve(file)
+    reader.readAsDataURL(file)
+  })
 }
 
 /**
@@ -88,6 +162,29 @@ export const uploadCoupleMedia = async ({
     size: file.size,
     type: file.type,
     category: validatedCategory,
+  }
+}
+
+/**
+ * Deletes a file from the private couple-media Supabase Storage bucket
+ */
+export const deleteCoupleMedia = async (path) => {
+  if (!supabase || !path) return false
+  // Clean path in case it's a signed URL
+  let cleanPath = path
+  if (path.includes('/couple-media/')) {
+    cleanPath = path.split('/couple-media/')[1]?.split('?')[0] || path
+  }
+  try {
+    const { error } = await supabase.storage.from('couple-media').remove([cleanPath])
+    if (error) {
+      console.warn('Storage delete warning:', error)
+      return false
+    }
+    return true
+  } catch (err) {
+    console.warn('Storage delete error:', err)
+    return false
   }
 }
 

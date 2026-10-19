@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useEffect, useState, useCallback } from 'react'
+import React, { createContext, useContext, useEffect, useState, useCallback, useRef } from 'react'
 import { supabase } from '../lib/supabaseClient'
 import { useAuth } from './AuthContext'
 
@@ -23,9 +23,10 @@ export const CoupleProvider = ({ children }) => {
   const [isPartnerOnline, setIsPartnerOnline] = useState(false)
   const [partnerLastSeen, setPartnerLastSeen] = useState(null)
   const [presenceChannel, setPresenceChannel] = useState(null)
+  const hasInitializedRef = useRef(false)
 
-  const fetchCoupleData = useCallback(async () => {
-    if (!supabase || !user) {
+  const fetchCoupleData = useCallback(async (isSilent = false) => {
+    if (!supabase || !user?.id) {
       setCoupleSpace(null)
       setPartner(null)
       setLoading(false)
@@ -33,7 +34,9 @@ export const CoupleProvider = ({ children }) => {
     }
 
     try {
-      setLoading(true)
+      if (!hasInitializedRef.current && !isSilent) {
+        setLoading(true)
+      }
 
       // 1. Get user's couple membership
       const { data: memberData, error: memberError } = await supabase
@@ -103,12 +106,17 @@ export const CoupleProvider = ({ children }) => {
     } catch (err) {
       console.error('Error loading couple data:', err)
     } finally {
+      hasInitializedRef.current = true
       setLoading(false)
     }
-  }, [user])
+  }, [user?.id])
+
+  const refreshCouple = useCallback(() => {
+    return fetchCoupleData(true)
+  }, [fetchCoupleData])
 
   useEffect(() => {
-    fetchCoupleData()
+    fetchCoupleData(false)
   }, [fetchCoupleData])
 
   // Realtime Presence tracking for the couple space
@@ -310,7 +318,7 @@ export const CoupleProvider = ({ children }) => {
         joinCoupleSpace,
         generateNewInvitation,
         updateCoupleSpace,
-        refreshCouple: fetchCoupleData,
+        refreshCouple,
       }}
     >
       {children}

@@ -14,12 +14,22 @@ import {
   Trash2,
   AlertTriangle,
   Camera,
+  Bell,
+  BellRing,
 } from 'lucide-react'
 import { useAuth } from '../../context/AuthContext'
 import { useCouple } from '../../context/CoupleContext'
 import { useTheme } from '../../context/ThemeContext'
 import { ConfigModal } from '../Auth/ConfigModal'
 import { AvatarCropperModal } from '../Profile/AvatarCropperModal'
+import {
+  getNotificationPermission,
+  requestNotificationPermission,
+  showBrowserNotification,
+  playNotificationSound,
+  isSoundEnabled,
+  setSoundEnabled,
+} from '../../lib/notificationHelper'
 import confetti from 'canvas-confetti'
 
 export const SettingsView = () => {
@@ -44,6 +54,41 @@ export const SettingsView = () => {
   const [isCropperOpen, setIsCropperOpen] = useState(false)
   const [isSavingAvatar, setIsSavingAvatar] = useState(false)
   const fileInputRef = useRef(null)
+
+  // Notification states
+  const [notifPermission, setNotifPermission] = useState(getNotificationPermission())
+  const [soundEnabled, setSoundEnabledState] = useState(isSoundEnabled())
+  const [testNotifSent, setTestNotifSent] = useState(false)
+
+  const handleEnableNotifications = async () => {
+    const res = await requestNotificationPermission()
+    setNotifPermission(res)
+    if (res === 'granted') {
+      showBrowserNotification({
+        title: 'Notifications Activated! 💌',
+        body: 'You will now receive alerts whenever your partner sends a message.',
+      })
+    }
+  }
+
+  const handleToggleSound = () => {
+    const next = !soundEnabled
+    setSoundEnabled(next)
+    setSoundEnabledState(next)
+    if (next) {
+      playNotificationSound()
+    }
+  }
+
+  const handleSendTestNotification = () => {
+    playNotificationSound()
+    showBrowserNotification({
+      title: 'Just You & Me 💗',
+      body: 'This is a test notification! Audio chime and browser alerts are working.',
+    })
+    setTestNotifSent(true)
+    setTimeout(() => setTestNotifSent(false), 3000)
+  }
 
   useEffect(() => {
     if (profile?.avatar_url) {
@@ -276,10 +321,11 @@ export const SettingsView = () => {
           <span className="text-xs font-semibold text-slate-800 dark:text-slate-200 block mb-2">
             Palette Style
           </span>
-          <div className="grid grid-cols-2 gap-2.5">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
             {Object.entries(THEME_PALETTES).map(([key, val]) => (
               <button
                 key={key}
+                type="button"
                 onClick={() => setPalette(key)}
                 className={`p-3 rounded-2xl border text-left flex items-center justify-between transition ${
                   palette === key
@@ -288,7 +334,15 @@ export const SettingsView = () => {
                 }`}
               >
                 <div>
-                  <div className={`w-6 h-6 rounded-lg bg-gradient-to-r ${val.primary} mb-1`} />
+                  <div className="flex gap-1.5 mb-1.5">
+                    {val.preview?.map((hex, i) => (
+                      <span
+                        key={i}
+                        className="w-4 h-4 rounded-full shadow-sm border border-black/10 inline-block"
+                        style={{ backgroundColor: hex }}
+                      />
+                    ))}
+                  </div>
                   <span className="text-xs font-semibold text-slate-800 dark:text-slate-200 block">
                     {val.name}
                   </span>
@@ -298,6 +352,74 @@ export const SettingsView = () => {
             ))}
           </div>
         </div>
+      </div>
+
+      {/* Notifications & Sound Alerts */}
+      <div className="glass rounded-3xl p-5 border border-rose-200/60 dark:border-rose-900/40 space-y-4">
+        <div className="flex items-center gap-2 text-rose-500">
+          <Bell className="w-4 h-4" />
+          <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-400">
+            Notifications & Sound Alerts
+          </h3>
+        </div>
+
+        {/* Sound toggle */}
+        <div className="flex items-center justify-between py-2 border-b border-rose-100 dark:border-slate-800">
+          <div>
+            <h4 className="text-xs font-semibold text-slate-800 dark:text-slate-200">
+              Romantic Audio Chime
+            </h4>
+            <p className="text-[11px] text-slate-400">Play sweet synthesized chime when partner texts or calls</p>
+          </div>
+          <button
+            type="button"
+            onClick={handleToggleSound}
+            className={`w-12 h-6 rounded-full transition-colors relative p-0.5 ${
+              soundEnabled ? 'bg-rose-500' : 'bg-slate-300'
+            }`}
+          >
+            <div
+              className={`w-5 h-5 rounded-full bg-white transition-transform ${
+                soundEnabled ? 'translate-x-6' : 'translate-x-0'
+              }`}
+            />
+          </button>
+        </div>
+
+        {/* Browser notification permission */}
+        <div className="flex items-center justify-between py-2 border-b border-rose-100 dark:border-slate-800">
+          <div>
+            <h4 className="text-xs font-semibold text-slate-800 dark:text-slate-200">
+              Browser Push Alerts
+            </h4>
+            <p className="text-[11px] text-slate-400">
+              Status: <span className="font-semibold capitalize text-rose-500">{notifPermission}</span>
+            </p>
+          </div>
+          {notifPermission !== 'granted' ? (
+            <button
+              type="button"
+              onClick={handleEnableNotifications}
+              className="py-1.5 px-3 rounded-xl bg-rose-500 hover:bg-rose-600 text-white text-xs font-semibold shadow-sm transition"
+            >
+              Enable Alerts
+            </button>
+          ) : (
+            <span className="text-xs text-emerald-600 dark:text-emerald-400 font-semibold flex items-center gap-1">
+              <Check className="w-3.5 h-3.5" /> Enabled
+            </span>
+          )}
+        </div>
+
+        {/* Test Notification Button */}
+        <button
+          type="button"
+          onClick={handleSendTestNotification}
+          className="w-full py-2.5 px-4 rounded-xl bg-rose-50 dark:bg-rose-950/40 text-rose-600 dark:text-rose-300 hover:bg-rose-100 text-xs font-semibold flex items-center justify-center gap-1.5 transition active:scale-95"
+        >
+          <BellRing className="w-3.5 h-3.5" />
+          <span>{testNotifSent ? 'Test Notification Sent! 🔔' : 'Send Test Alert & Sound'}</span>
+        </button>
       </div>
 
       {/* Network & Infrastructure Settings */}
