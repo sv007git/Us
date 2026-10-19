@@ -31,14 +31,21 @@ const MOOD_OPTIONS = [
 ]
 
 export const DashboardView = ({ setCurrentTab }) => {
-  const { profile, updateProfile } = useAuth()
-  const { coupleSpace, partner, isPartnerOnline } = useCouple()
+  const { user, profile, updateProfile } = useAuth()
+  const { coupleSpace, partner, isPartnerOnline, presenceChannel } = useCouple()
   const { startCall } = useCall()
   const { currentTheme } = useTheme()
 
   const [anniversaryStats, setAnniversaryStats] = useState({ days: 0, hours: 0, mins: 0 })
   const [selectedMood, setSelectedMood] = useState(profile?.status_mood || 'Thinking of you 💭')
   const [isUpdatingMood, setIsUpdatingMood] = useState(false)
+
+  // Sync mood if profile updates
+  useEffect(() => {
+    if (profile?.status_mood) {
+      setSelectedMood(profile.status_mood)
+    }
+  }, [profile?.status_mood])
 
   // Calculate live anniversary time
   useEffect(() => {
@@ -67,6 +74,20 @@ export const DashboardView = ({ setCurrentTab }) => {
     setIsUpdatingMood(true)
     try {
       await updateProfile({ statusMood: mood })
+
+      // Broadcast mood update in realtime to partner
+      if (presenceChannel) {
+        presenceChannel.send({
+          type: 'broadcast',
+          event: 'partner-profile-updated',
+          payload: {
+            userId: user?.id,
+            statusMood: mood,
+            profile: { ...(profile || {}), status_mood: mood },
+          },
+        })
+      }
+
       confetti({ particleCount: 20, spread: 50, origin: { y: 0.6 } })
     } catch (e) {
       console.warn('Could not update status mood:', e)

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { calculateTargetTime, DRIFT_THRESHOLD_SECONDS } from '../src/lib/syncEngine'
+import { calculateTargetTime, DRIFT_THRESHOLD_SECONDS, normalizeVideoUrl } from '../src/lib/syncEngine'
 
 describe('Watch Together Synchronization Engine', () => {
   it('drift threshold is configured appropriately to 1.5s', () => {
@@ -29,5 +29,27 @@ describe('Watch Together Synchronization Engine', () => {
     // Target should be 20.0 + 1.0 * 1.5 = 21.5s
     expect(target).toBeGreaterThanOrEqual(21.4)
     expect(target).toBeLessThan(21.7)
+  })
+
+  it('normalizes Google Drive share link into direct stream URL', () => {
+    const driveUrl = 'https://drive.google.com/file/d/1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs/view?usp=sharing'
+    const normalized = normalizeVideoUrl(driveUrl)
+    expect(normalized).toBe(
+      'https://drive.usercontent.google.com/download?id=1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs&export=download&confirm=t'
+    )
+  })
+
+  it('normalizes Google Drive open/id link into direct stream URL', () => {
+    const driveUrl = 'https://drive.google.com/open?id=abc123xyz_456'
+    const normalized = normalizeVideoUrl(driveUrl)
+    expect(normalized).toBe(
+      'https://drive.usercontent.google.com/download?id=abc123xyz_456&export=download&confirm=t'
+    )
+  })
+
+  it('normalizes Dropbox dl=0 into raw=1 stream URL', () => {
+    const dropboxUrl = 'https://www.dropbox.com/s/sample/video.mp4?dl=0'
+    const normalized = normalizeVideoUrl(dropboxUrl)
+    expect(normalized).toBe('https://www.dropbox.com/s/sample/video.mp4?raw=1')
   })
 })

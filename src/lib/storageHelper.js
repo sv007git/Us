@@ -9,8 +9,22 @@ export const MAX_FILE_SIZES = {
 
 export const ALLOWED_MIME_TYPES = {
   image: ['image/jpeg', 'image/png', 'image/gif', 'image/webp'],
-  audio: ['audio/webm', 'audio/mp4', 'audio/ogg', 'audio/wav', 'audio/mpeg', 'audio/aac'],
-  video: ['video/mp4', 'video/webm', 'video/quicktime'],
+  audio: [
+    'audio/webm',
+    'audio/mp4',
+    'audio/ogg',
+    'audio/wav',
+    'audio/mpeg',
+    'audio/aac',
+    'audio/m4a',
+    'audio/x-m4a',
+    'audio/mp3',
+    'audio/3gpp',
+    'audio/x-wav',
+    'audio/wave',
+    'audio/opus',
+  ],
+  video: ['video/mp4', 'video/webm', 'video/quicktime', 'video/ogg', 'video/x-m4v'],
 }
 
 /**
@@ -33,9 +47,13 @@ export const validateFile = (file, expectedCategory = null) => {
     throw new Error(`File is too large. Maximum size for ${category} is ${maxMb}MB.`)
   }
 
+  const baseMime = (file.type || '').split(';')[0].trim().toLowerCase()
   const allowed = ALLOWED_MIME_TYPES[category]
-  if (allowed && file.type && !allowed.includes(file.type)) {
-    throw new Error(`Unsupported file format: ${file.type}. Allowed formats: ${allowed.join(', ')}`)
+  if (allowed && baseMime) {
+    const isAllowed = allowed.includes(baseMime) || (category === 'audio' && baseMime.startsWith('audio/'))
+    if (!isAllowed) {
+      throw new Error(`Unsupported file format: ${file.type}. Allowed formats: ${allowed.join(', ')}`)
+    }
   }
 
   return { isValid: true, category }
@@ -134,10 +152,12 @@ export const uploadCoupleMedia = async ({
   const cleanName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_')
   const storagePath = `${coupleSpaceId}/${validatedCategory}/${timestamp}_${cleanName}`
 
+  const baseMime = (file.type || '').split(';')[0].trim().toLowerCase()
   const { data, error } = await supabase.storage
     .from('couple-media')
     .upload(storagePath, file, {
       cacheControl: '3600',
+      contentType: baseMime || undefined,
       upsert: false,
     })
 

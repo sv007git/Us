@@ -18,6 +18,8 @@ export const THEME_PALETTES = {
     softHover: 'hover:bg-rose-100 dark:hover:bg-rose-900/60',
     shadow: 'shadow-rose-500/20',
     ring: 'focus:ring-rose-400',
+    themeColorLight: '#fff1f2',
+    themeColorDark: '#0f172a',
     preview: ['#f43f5e', '#ec4899', '#fda4af'],
   },
   rose: {
@@ -35,6 +37,8 @@ export const THEME_PALETTES = {
     softHover: 'hover:bg-pink-100 dark:hover:bg-pink-900/60',
     shadow: 'shadow-pink-600/20',
     ring: 'focus:ring-pink-500',
+    themeColorLight: '#ffe4e6',
+    themeColorDark: '#180a12',
     preview: ['#e11d48', '#be123c', '#fb7185'],
   },
   lavender: {
@@ -52,6 +56,8 @@ export const THEME_PALETTES = {
     softHover: 'hover:bg-purple-100 dark:hover:bg-purple-900/60',
     shadow: 'shadow-purple-500/20',
     ring: 'focus:ring-purple-400',
+    themeColorLight: '#f3e8ff',
+    themeColorDark: '#130a1c',
     preview: ['#a855f7', '#d946ef', '#e9d5ff'],
   },
   midnight: {
@@ -69,6 +75,8 @@ export const THEME_PALETTES = {
     softHover: 'hover:bg-indigo-100 dark:hover:bg-indigo-900/60',
     shadow: 'shadow-indigo-600/20',
     ring: 'focus:ring-indigo-400',
+    themeColorLight: '#eef2ff',
+    themeColorDark: '#0b0f19',
     preview: ['#6366f1', '#4338ca', '#a5b4fc'],
   },
   sunset: {
@@ -86,6 +94,8 @@ export const THEME_PALETTES = {
     softHover: 'hover:bg-amber-100 dark:hover:bg-amber-900/60',
     shadow: 'shadow-orange-500/20',
     ring: 'focus:ring-amber-400',
+    themeColorLight: '#ffedd5',
+    themeColorDark: '#1c1008',
     preview: ['#f97316', '#f59e0b', '#fed7aa'],
   },
   ocean: {
@@ -103,6 +113,8 @@ export const THEME_PALETTES = {
     softHover: 'hover:bg-cyan-100 dark:hover:bg-cyan-900/60',
     shadow: 'shadow-cyan-500/20',
     ring: 'focus:ring-cyan-400',
+    themeColorLight: '#cffafe',
+    themeColorDark: '#06141a',
     preview: ['#06b6d4', '#14b8a6', '#a5f3fc'],
   },
   emerald: {
@@ -120,6 +132,8 @@ export const THEME_PALETTES = {
     softHover: 'hover:bg-emerald-100 dark:hover:bg-emerald-900/60',
     shadow: 'shadow-emerald-500/20',
     ring: 'focus:ring-emerald-400',
+    themeColorLight: '#d1fae5',
+    themeColorDark: '#071710',
     preview: ['#10b981', '#059669', '#a7f3d0'],
   },
 }
@@ -159,14 +173,30 @@ export const ThemeProvider = ({ children }) => {
     }
   }, [palette])
 
-  const toggleDarkMode = () => setIsDarkMode((prev) => !prev)
-
   const currentTheme = THEME_PALETTES[palette] || THEME_PALETTES.blush
+
+  // Dynamic Chrome Mobile & Browser Address Bar Color Sync
+  useEffect(() => {
+    if (typeof document === 'undefined') return
+    const themeColor = isDarkMode ? currentTheme.themeColorDark : currentTheme.themeColorLight
+    if (!themeColor) return
+
+    let meta = document.querySelector('meta[name="theme-color"]')
+    if (!meta) {
+      meta = document.createElement('meta')
+      meta.name = 'theme-color'
+      document.head.appendChild(meta)
+    }
+    meta.setAttribute('content', themeColor)
+  }, [isDarkMode, palette, currentTheme])
+
+  const toggleDarkMode = () => setIsDarkMode((prev) => !prev)
 
   return (
     <ThemeContext.Provider
       value={{
         isDarkMode,
+        setIsDarkMode,
         toggleDarkMode,
         palette,
         setPalette,

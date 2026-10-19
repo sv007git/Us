@@ -221,6 +221,9 @@ export class WebRtcCallManager {
 
     try {
       this.localStream = await navigator.mediaDevices.getUserMedia(constraints)
+      this.localStream.getAudioTracks().forEach((track) => {
+        track.enabled = true
+      })
       return this.localStream
     } catch (err) {
       console.error('Media acquisition error:', err)
@@ -241,6 +244,8 @@ export class WebRtcCallManager {
 
     // Remote track listener (handles both streams and individual audio/video tracks)
     this.peerConnection.ontrack = (event) => {
+      event.track.enabled = true
+
       if (event.streams && event.streams[0]) {
         this.remoteStream = event.streams[0]
       } else if (event.track) {
@@ -252,9 +257,21 @@ export class WebRtcCallManager {
         }
       }
 
-      if (this.remoteStream) {
-        this.onRemoteStream(this.remoteStream)
+      const notifyStream = () => {
+        if (this.remoteStream) {
+          this.remoteStream.getTracks().forEach((t) => {
+            t.enabled = true
+          })
+          // Create fresh MediaStream reference so React state updates and triggers re-render
+          this.onRemoteStream(new MediaStream(this.remoteStream.getTracks()))
+        }
       }
+
+      event.track.onunmute = () => {
+        notifyStream()
+      }
+
+      notifyStream()
     }
 
     // ICE candidate generation

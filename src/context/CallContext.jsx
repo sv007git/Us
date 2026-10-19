@@ -30,22 +30,41 @@ export const CallProvider = ({ children }) => {
 
   // Attach remote stream to dedicated global audio element for guaranteed audio playback
   useEffect(() => {
-    if (globalAudioRef.current && remoteStream) {
+    const audioEl = globalAudioRef.current
+    if (audioEl && remoteStream) {
       try {
-        globalAudioRef.current.srcObject = remoteStream
-        globalAudioRef.current.muted = false
-        globalAudioRef.current.volume = 1.0
-        const playPromise = globalAudioRef.current.play()
-        if (playPromise !== undefined) {
-          playPromise.catch((err) => {
-            console.warn('Audio autoPlay policy caught (will activate on user click):', err)
-          })
+        audioEl.srcObject = remoteStream
+        audioEl.muted = false
+        audioEl.volume = 1.0
+
+        const playAudio = () => {
+          const playPromise = audioEl.play()
+          if (playPromise !== undefined) {
+            playPromise.catch((err) => {
+              console.warn('Audio autoPlay policy waiting for user interaction:', err)
+            })
+          }
+        }
+        playAudio()
+
+        // Unlock audio on first touch/click in case browser autoplay policy held it
+        const handleUnlock = () => {
+          if (audioEl && audioEl.paused) {
+            audioEl.play().catch(() => {})
+          }
+        }
+        window.addEventListener('click', handleUnlock, { once: true })
+        window.addEventListener('touchstart', handleUnlock, { once: true })
+
+        return () => {
+          window.removeEventListener('click', handleUnlock)
+          window.removeEventListener('touchstart', handleUnlock)
         }
       } catch (err) {
         console.warn('Global audio attach warning:', err)
       }
-    } else if (globalAudioRef.current && !remoteStream) {
-      globalAudioRef.current.srcObject = null
+    } else if (audioEl && !remoteStream) {
+      audioEl.srcObject = null
     }
   }, [remoteStream, callState])
 
@@ -265,12 +284,13 @@ export const CallProvider = ({ children }) => {
       }}
     >
       {children}
-      {/* Invisible global audio element to guarantee remote call audio is always audible */}
+      {/* Global audio element to guarantee remote call audio is always audible */}
       <audio
         ref={globalAudioRef}
         autoPlay
         playsInline
-        style={{ display: 'none' }}
+        className="sr-only"
+        aria-hidden="true"
       />
     </CallContext.Provider>
   )

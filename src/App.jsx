@@ -24,8 +24,8 @@ import {
 
 const AppContent = () => {
   const { user, loading: authLoading } = useAuth()
-  const { isPaired, partner, loading: coupleLoading } = useCouple()
-  const { currentTheme } = useTheme()
+  const { isPaired, partner, coupleSpace, loading: coupleLoading } = useCouple()
+  const { currentTheme, palette, setPalette, isDarkMode, setIsDarkMode } = useTheme()
 
   const [currentTab, setCurrentTab] = useState(() => {
     if (typeof localStorage === 'undefined') return 'dashboard'
@@ -35,6 +35,27 @@ const AppContent = () => {
   const [notificationToast, setNotificationToast] = useState(null)
   const [notifPermission, setNotifPermission] = useState(() => getNotificationPermission())
   const [isPromptDismissed, setIsPromptDismissed] = useState(false)
+
+  // Synchronize theme universally across all devices from coupleSpace
+  useEffect(() => {
+    if (coupleSpace) {
+      const spaceTheme = coupleSpace.theme_preference || coupleSpace.metadata?.palette
+      if (spaceTheme && spaceTheme !== palette) {
+        setPalette(spaceTheme)
+      }
+      if (
+        coupleSpace.metadata?.darkMode !== undefined &&
+        coupleSpace.metadata.darkMode !== isDarkMode
+      ) {
+        setIsDarkMode(coupleSpace.metadata.darkMode)
+      }
+    }
+  }, [
+    coupleSpace?.id,
+    coupleSpace?.theme_preference,
+    coupleSpace?.metadata?.palette,
+    coupleSpace?.metadata?.darkMode,
+  ])
 
   // Sync tab state to localStorage
   useEffect(() => {

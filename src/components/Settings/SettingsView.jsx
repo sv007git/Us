@@ -34,8 +34,44 @@ import confetti from 'canvas-confetti'
 
 export const SettingsView = () => {
   const { user, profile, updateProfile, signOut, deleteAccount } = useAuth()
-  const { coupleSpace, partner, updateCoupleSpace } = useCouple()
+  const { coupleSpace, partner, updateCoupleSpace, presenceChannel } = useCouple()
   const { isDarkMode, toggleDarkMode, palette, setPalette, THEME_PALETTES, currentTheme } = useTheme()
+
+  const handleSelectPalette = (key) => {
+    setPalette(key)
+    if (coupleSpace) {
+      updateCoupleSpace({
+        theme_preference: key,
+        metadata: { ...(coupleSpace.metadata || {}), palette: key, darkMode: isDarkMode },
+      }).catch((e) => console.warn('Could not persist theme to couple space:', e))
+
+      if (presenceChannel) {
+        presenceChannel.send({
+          type: 'broadcast',
+          event: 'couple-theme-updated',
+          payload: { palette: key, isDarkMode },
+        })
+      }
+    }
+  }
+
+  const handleToggleDark = () => {
+    const nextDark = !isDarkMode
+    toggleDarkMode()
+    if (coupleSpace) {
+      updateCoupleSpace({
+        metadata: { ...(coupleSpace.metadata || {}), palette, darkMode: nextDark },
+      }).catch((e) => console.warn('Could not persist dark mode to couple space:', e))
+
+      if (presenceChannel) {
+        presenceChannel.send({
+          type: 'broadcast',
+          event: 'couple-theme-updated',
+          payload: { palette, isDarkMode: nextDark },
+        })
+      }
+    }
+  }
 
   const [displayName, setDisplayName] = useState(profile?.display_name || '')
   const [avatarUrl, setAvatarUrl] = useState(profile?.avatar_url || '')
@@ -304,7 +340,7 @@ export const SettingsView = () => {
             <p className="text-[11px] text-slate-400">Soft romantic night tones</p>
           </div>
           <button
-            onClick={toggleDarkMode}
+            onClick={handleToggleDark}
             className={`w-12 h-6 rounded-full transition-colors relative p-0.5 ${
               isDarkMode ? currentTheme.accent : 'bg-slate-300'
             }`}
@@ -326,7 +362,7 @@ export const SettingsView = () => {
               <button
                 key={key}
                 type="button"
-                onClick={() => setPalette(key)}
+                onClick={() => handleSelectPalette(key)}
                 className={`p-3 rounded-2xl border text-left flex items-center justify-between transition ${
                   palette === key
                     ? `${currentTheme.border} ring-2 ${currentTheme.ring} ${currentTheme.softBg}`

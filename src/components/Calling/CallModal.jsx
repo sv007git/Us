@@ -68,13 +68,40 @@ export const CallModal = () => {
 
   // Dedicated remote audio element to ensure audio is always crystal clear in both audio and video calls
   useEffect(() => {
-    if (remoteAudioRef.current && remoteStream) {
-      remoteAudioRef.current.srcObject = remoteStream
-      remoteAudioRef.current.muted = false
-      remoteAudioRef.current.volume = 1.0
-      remoteAudioRef.current.play().catch((err) => {
-        console.warn('Remote audio autoplay note:', err)
-      })
+    const audioEl = remoteAudioRef.current
+    if (audioEl && remoteStream) {
+      try {
+        audioEl.srcObject = remoteStream
+        audioEl.muted = false
+        audioEl.volume = 1.0
+
+        const playAudio = () => {
+          const p = audioEl.play()
+          if (p !== undefined) {
+            p.catch((err) => {
+              console.warn('Remote audio autoplay waiting for user interaction:', err)
+            })
+          }
+        }
+        playAudio()
+
+        const handleUnlock = () => {
+          if (audioEl && audioEl.paused) {
+            audioEl.play().catch(() => {})
+          }
+        }
+        window.addEventListener('click', handleUnlock, { once: true })
+        window.addEventListener('touchstart', handleUnlock, { once: true })
+
+        return () => {
+          window.removeEventListener('click', handleUnlock)
+          window.removeEventListener('touchstart', handleUnlock)
+        }
+      } catch (err) {
+        console.warn('Remote audio attach warning:', err)
+      }
+    } else if (audioEl && !remoteStream) {
+      audioEl.srcObject = null
     }
   }, [remoteStream, callState])
 
@@ -90,7 +117,7 @@ export const CallModal = () => {
   if (isCallMinimized && (callState === 'connected' || callState === 'connecting')) {
     return (
       <div className={`fixed bottom-20 right-3 sm:right-6 z-50 w-44 sm:w-56 aspect-[3/4] sm:aspect-video rounded-3xl overflow-hidden shadow-2xl border-2 ${currentTheme.border} bg-slate-950/95 backdrop-blur-md animate-scale-up group`}>
-        <audio ref={remoteAudioRef} autoPlay playsInline style={{ display: 'none' }} />
+        <audio ref={remoteAudioRef} autoPlay playsInline className="sr-only" aria-hidden="true" />
 
         <div className="w-full h-full relative flex items-center justify-center bg-slate-900">
           {isVideoCall ? (
@@ -98,6 +125,7 @@ export const CallModal = () => {
               ref={remoteVideoRef}
               autoPlay
               playsInline
+              muted
               className="w-full h-full object-cover"
             />
           ) : (
@@ -187,7 +215,7 @@ export const CallModal = () => {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/90 backdrop-blur-lg animate-fade-in text-white p-4">
       {/* Permanent remote audio element for full-duplex sound in audio & video calls */}
-      <audio ref={remoteAudioRef} autoPlay playsInline style={{ display: 'none' }} />
+      <audio ref={remoteAudioRef} autoPlay playsInline className="sr-only" aria-hidden="true" />
 
       {/* Call Error Banner */}
       {callError && (
@@ -309,6 +337,7 @@ export const CallModal = () => {
                 ref={remoteVideoRef}
                 autoPlay
                 playsInline
+                muted
                 className="w-full h-full object-cover rounded-3xl"
               />
             ) : (

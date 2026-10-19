@@ -12,6 +12,31 @@ export const calculateTargetTime = (sentTime, sentTimestamp, isPlaying, playback
 }
 
 /**
+ * Automatically normalizes video URLs from Google Drive, Dropbox, and direct links.
+ * Google Drive /file/d/<id>/view -> direct streaming link with virus scan confirmation token.
+ */
+export const normalizeVideoUrl = (rawUrl) => {
+  if (!rawUrl) return ''
+  const trimmed = rawUrl.trim()
+
+  // Google Drive format matcher
+  const driveMatch =
+    trimmed.match(/\/file\/d\/([a-zA-Z0-9_-]+)/) ||
+    trimmed.match(/[?&]id=([a-zA-Z0-9_-]+)/)
+  if (driveMatch && driveMatch[1]) {
+    const fileId = driveMatch[1]
+    return `https://drive.usercontent.google.com/download?id=${fileId}&export=download&confirm=t`
+  }
+
+  // Dropbox dl=0 to direct stream raw=1
+  if (trimmed.includes('dropbox.com')) {
+    return trimmed.replace('dl=0', 'raw=1').replace('?dl=1', '?raw=1')
+  }
+
+  return trimmed
+}
+
+/**
  * Synchronization Manager for Couples Watch Together
  */
 export class WatchSyncEngine {
@@ -56,6 +81,7 @@ export class WatchSyncEngine {
       action: payload.action,
       by: payload.senderName || 'Your partner',
       time: payload.currentTime,
+      isMuted: payload.isMuted,
     })
 
     const targetTime = calculateTargetTime(
@@ -76,6 +102,11 @@ export class WatchSyncEngine {
       this.videoElement.playbackRate = payload.playbackRate
     }
 
+    // Sync mute state if specified
+    if (payload.isMuted !== undefined && this.videoElement.muted !== payload.isMuted) {
+      this.videoElement.muted = payload.isMuted
+    }
+
     if (payload.isPlaying && this.videoElement.paused) {
       this.videoElement.play().catch((e) => console.warn('Autoplay prevented by browser:', e))
     } else if (!payload.isPlaying && !this.videoElement.paused) {
@@ -87,7 +118,7 @@ export class WatchSyncEngine {
     }, 450)
   }
 
-  broadcastAction(action) {
+  broadcastAction(action, extraPayload = {}) {
     if (this.isApplyingRemote || !this.videoElement || !this.channel) return
 
     const now = Date.now()
@@ -101,7 +132,9 @@ export class WatchSyncEngine {
       currentTime: this.videoElement.currentTime,
       isPlaying: !this.videoElement.paused,
       playbackRate: this.videoElement.playbackRate,
+      isMuted: this.videoElement.muted,
       timestamp: now,
+      ...extraPayload,
     }
 
     this.channel.send({

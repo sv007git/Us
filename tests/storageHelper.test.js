@@ -50,4 +50,26 @@ describe('Private Storage & Media Validation', () => {
     }
     expect(() => validateFile(executable, 'image')).toThrow(/unsupported file format/i)
   })
+
+  it('accepts browser voice notes with codec parameters (audio/webm;codecs=opus)', () => {
+    const voiceNote = {
+      name: 'voice_note_123.webm',
+      type: 'audio/webm;codecs=opus',
+      size: 250 * 1024, // 250KB
+    }
+    const result = validateFile(voiceNote, 'audio')
+    expect(result.isValid).toBe(true)
+    expect(result.category).toBe('audio')
+  })
+
+  it('accepts mobile and alternative audio formats (audio/ogg, audio/mp4, audio/m4a)', () => {
+    const m4aAudio = {
+      name: 'note.m4a',
+      type: 'audio/m4a',
+      size: 500 * 1024,
+    }
+    const result = validateFile(m4aAudio, 'audio')
+    expect(result.isValid).toBe(true)
+    expect(result.category).toBe('audio')
+  })
 })

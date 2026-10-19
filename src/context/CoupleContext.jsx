@@ -153,6 +153,30 @@ export const CoupleProvider = ({ children }) => {
           setPartnerLastSeen(new Date())
         }
       })
+      .on('broadcast', { event: 'partner-profile-updated' }, ({ payload }) => {
+        if (payload && (payload.userId === partner?.id || payload.userId !== user.id)) {
+          setPartner((prev) => ({
+            ...(prev || {}),
+            ...(payload.profile || {}),
+            status_mood: payload.statusMood || payload.profile?.status_mood || prev?.status_mood,
+            display_name: payload.displayName || payload.profile?.display_name || prev?.display_name,
+            avatar_url: payload.avatarUrl || payload.profile?.avatar_url || prev?.avatar_url,
+          }))
+        }
+      })
+      .on('broadcast', { event: 'couple-theme-updated' }, ({ payload }) => {
+        if (payload) {
+          setCoupleSpace((prev) => ({
+            ...(prev || {}),
+            theme_preference: payload.palette || prev?.theme_preference,
+            metadata: {
+              ...(prev?.metadata || {}),
+              palette: payload.palette || prev?.metadata?.palette,
+              darkMode: payload.isDarkMode !== undefined ? payload.isDarkMode : prev?.metadata?.darkMode,
+            },
+          }))
+        }
+      })
       .subscribe(async (status) => {
         if (status === 'SUBSCRIBED') {
           await channel.track({
@@ -168,6 +192,63 @@ export const CoupleProvider = ({ children }) => {
       channel.unsubscribe()
     }
   }, [coupleSpace?.id, user?.id, partner?.id])
+
+  // Listen to live Postgres changes on partner's profile
+  useEffect(() => {
+    if (!supabase || !partner?.id) return
+
+    const profileChannel = supabase
+      .channel(`partner_profile_changes_${partner.id}`)
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'profiles',
+          filter: `id=eq.${partner.id}`,
+        },
+        (payload) => {
+          if (payload.new) {
+            setPartner((prev) => ({
+              ...(prev || {}),
+              ...payload.new,
+            }))
+          }
+        }
+      )
+      .subscribe()
+
+    return () => {
+      profileChannel.unsubscribe()
+    }
+  }, [partner?.id])
+
+  // Listen to live Postgres changes on couple_spaces (for theme and space updates)
+  useEffect(() => {
+    if (!supabase || !coupleSpace?.id) return
+
+    const spaceChannel = supabase
+      .channel(`space_changes_${coupleSpace.id}`)
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'couple_spaces',
+          filter: `id=eq.${coupleSpace.id}`,
+        },
+        (payload) => {
+          if (payload.new) {
+            setCoupleSpace(payload.new)
+          }
+        }
+      )
+      .subscribe()
+
+    return () => {
+      spaceChannel.unsubscribe()
+    }
+  }, [coupleSpace?.id])
 
   /**
    * Creates a new couple space and an initial invitation code
@@ -319,6 +400,7 @@ export const CoupleProvider = ({ children }) => {
         generateNewInvitation,
         updateCoupleSpace,
         refreshCouple,
+        presenceChannel,
       }}
     >
       {children}

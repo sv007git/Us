@@ -117,10 +117,17 @@ export const VoiceRecorder = ({ onSendAudio, onCancel }) => {
 
   const handleSend = () => {
     if (!recordedBlob) return
-    const mimeType = recordedBlob.type || 'audio/webm'
-    const extension = mimeType.includes('mp4') ? 'mp4' : mimeType.includes('ogg') ? 'ogg' : 'webm'
+    const rawMime = recordedBlob.type || 'audio/webm'
+    const cleanMime = rawMime.split(';')[0].trim().toLowerCase() || 'audio/webm'
+    const extension = cleanMime.includes('mp4') || cleanMime.includes('m4a') || cleanMime.includes('aac')
+      ? 'mp4'
+      : cleanMime.includes('ogg')
+      ? 'ogg'
+      : cleanMime.includes('wav')
+      ? 'wav'
+      : 'webm'
     const audioFile = new File([recordedBlob], `voice_note_${Date.now()}.${extension}`, {
-      type: mimeType,
+      type: cleanMime,
     })
 
     onSendAudio({

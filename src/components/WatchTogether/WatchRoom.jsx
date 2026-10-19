@@ -4,6 +4,7 @@ import {
   Play,
   Pause,
   RotateCcw,
+  RotateCw,
   Volume2,
   VolumeX,
   Maximize,
@@ -36,7 +37,7 @@ import {
   Radio,
   Clapperboard,
 } from 'lucide-react'
-import { WatchSyncEngine } from '../../lib/syncEngine'
+import { WatchSyncEngine, normalizeVideoUrl } from '../../lib/syncEngine'
 import { useAuth } from '../../context/AuthContext'
 import { useCouple } from '../../context/CoupleContext'
 import { useCall } from '../../context/CallContext'
@@ -179,13 +180,22 @@ export const WatchRoom = () => {
       currentUserId: user.id,
       currentUserName: profile?.display_name || 'Partner',
       videoElement: videoRef.current,
-      onPartnerAction: ({ action, by, time }) => {
+      onPartnerAction: ({ action, by, time, isMuted: remoteMuted }) => {
+        if (remoteMuted !== undefined) {
+          setIsMuted(remoteMuted)
+        }
         const text = `${by} ${
           action === 'seek'
             ? `jumped to ${Math.floor(time)}s`
             : action === 'play'
             ? 'played the movie'
-            : 'paused the movie'
+            : action === 'pause'
+            ? 'paused the movie'
+            : action === 'mute'
+            ? 'muted the movie'
+            : action === 'unmute'
+            ? 'unmuted the movie'
+            : 'synced the movie'
         }`
         setPartnerActionToast(text)
         if (toastTimeoutRef.current) clearTimeout(toastTimeoutRef.current)
@@ -196,9 +206,18 @@ export const WatchRoom = () => {
     engine.init()
     syncEngineRef.current = engine
 
-    // Listen to watch-chat and watch-reaction broadcasts on sync channel
+    // Listen to watch-chat, watch-reaction, and video-url-changed broadcasts on sync channel
     if (engine.channel) {
       engine.channel
+        .on('broadcast', { event: 'video-url-changed' }, ({ payload }) => {
+          if (payload && payload.senderId !== user.id && payload.url) {
+            setVideoUrl(payload.url)
+            setLocalMovieFile(null)
+            setVideoError(null)
+            setPartnerActionToast(`${payload.senderName || 'Your partner'} loaded a movie 🎬`)
+            confetti({ particleCount: 30, spread: 60, origin: { y: 0.5 } })
+          }
+        })
         .on('broadcast', { event: 'watch-chat' }, ({ payload }) => {
           if (payload && payload.id && payload.senderId !== user.id) {
             setRoomMessages((prev) => {
@@ -357,13 +376,46 @@ export const WatchRoom = () => {
     }
   }
 
-  const handleLoadUrl = (e) => {
+  const handleLoadUrl = async (e) => {
     e.preventDefault()
     if (!inputUrl.trim()) return
-    setVideoUrl(inputUrl.trim())
+    const raw = inputUrl.trim()
+    const normalized = normalizeVideoUrl(raw)
+    setVideoUrl(normalized)
     setInputUrl('')
     setLocalMovieFile(null)
     setVideoError(null)
+
+    // Broadcast to partner so both screens load the movie simultaneously
+    syncEngineRef.current?.channel?.send({
+      type: 'broadcast',
+      event: 'video-url-changed',
+      payload: {
+        url: normalized,
+        rawUrl: raw,
+        senderId: user.id,
+        senderName: profile?.display_name || 'Partner',
+      },
+    })
+
+    // Persist to database watch_sessions
+    try {
+      await supabase?.from('watch_sessions').upsert(
+        {
+          couple_space_id: coupleSpace.id,
+          video_url: normalized,
+          playback_position: 0,
+          is_playing: false,
+          last_updated_by: user.id,
+          updated_at: new Date().toISOString(),
+        },
+        { onConflict: 'couple_space_id' }
+      )
+    } catch (err) {
+      console.warn('Could not save movie URL to watch_sessions:', err)
+    }
+
+    confetti({ particleCount: 25, spread: 60, origin: { y: 0.5 } })
   }
 
   // ===================================================================
@@ -614,12 +666,19 @@ export const WatchRoom = () => {
   }
 
   // Send Voice Note from inline recorder
-  const handleSendAudio = async (blob, audioDuration) => {
+  const handleSendAudio = async (data, fallbackDuration) => {
     if (!user?.id || !coupleSpace?.id) return
     setIsVoiceRecorderOpen(false)
 
     try {
-      const audioFile = new File([blob], `voice_note_${Date.now()}.webm`, { type: blob.type })
+      const audioFile =
+        data?.file ||
+        (data instanceof Blob
+          ? new File([data], `voice_note_${Date.now()}.webm`, { type: (data.type || 'audio/webm').split(';')[0] })
+          : null)
+      const duration = data?.duration ?? fallbackDuration ?? 0
+      if (!audioFile) return
+
       let mediaUrl = null
 
       try {
@@ -630,7 +689,7 @@ export const WatchRoom = () => {
         })
         mediaUrl = uploadRes.signedUrl || uploadRes.path
       } catch (err) {
-        mediaUrl = URL.createObjectURL(blob)
+        mediaUrl = URL.createObjectURL(audioFile)
       }
 
       const metadata = {
@@ -926,14 +985,15 @@ export const WatchRoom = () => {
         <video
           ref={videoRef}
           src={videoUrl}
-          crossOrigin="anonymous"
           playsInline
           onPlay={handlePlay}
           onPause={handlePause}
           onTimeUpdate={handleTimeUpdate}
           onLoadedMetadata={handleLoadedMetadata}
           onError={() =>
-            setVideoError('Cannot play this video URL. Direct MP4/WebM HTTPS URLs are supported.')
+            setVideoError(
+              'Cannot play this video URL. If using Google Drive, make sure file access is set to "Anyone with the link can view", or use direct MP4/WebM URLs.'
+            )
           }
           className="w-full max-h-[55vh] aspect-video object-contain bg-black"
         />
@@ -946,12 +1006,13 @@ export const WatchRoom = () => {
         {/* IN-MOVIE FLOATING PARTNER VIDEO OVERLAY (When Call is Active) */}
         {callState === 'connected' && isCallDocked && (
           <div className={`absolute top-3 right-3 z-20 w-32 sm:w-44 aspect-[3/4] sm:aspect-video rounded-2xl overflow-hidden border-2 ${currentTheme.border} shadow-2xl bg-black/90 backdrop-blur-md animate-scale-up`}>
-            <audio ref={remoteAudioRef} autoPlay playsInline style={{ display: 'none' }} />
+            <audio ref={remoteAudioRef} autoPlay playsInline className="sr-only" aria-hidden="true" />
             {isVideoCall ? (
               <video
                 ref={remoteVideoRef}
                 autoPlay
                 playsInline
+                muted
                 className="w-full h-full object-cover"
               />
             ) : (
@@ -1049,7 +1110,9 @@ export const WatchRoom = () => {
               <button
                 onClick={() => {
                   if (videoRef.current) {
-                    videoRef.current.currentTime = Math.max(0, videoRef.current.currentTime - 10)
+                    const target = Math.max(0, videoRef.current.currentTime - 10)
+                    videoRef.current.currentTime = target
+                    setCurrentTime(target)
                     syncEngineRef.current?.broadcastAction('seek')
                   }
                 }}
@@ -1062,8 +1125,26 @@ export const WatchRoom = () => {
               <button
                 onClick={() => {
                   if (videoRef.current) {
-                    videoRef.current.muted = !isMuted
-                    setIsMuted(!isMuted)
+                    const maxT = videoRef.current.duration || 999999
+                    const target = Math.min(maxT, videoRef.current.currentTime + 10)
+                    videoRef.current.currentTime = target
+                    setCurrentTime(target)
+                    syncEngineRef.current?.broadcastAction('seek')
+                  }
+                }}
+                className="p-2 rounded-full hover:bg-white/10 text-white/80 transition"
+                title="Forward 10 seconds"
+              >
+                <RotateCw className="w-4 h-4" />
+              </button>
+
+              <button
+                onClick={() => {
+                  if (videoRef.current) {
+                    const nextMuted = !isMuted
+                    videoRef.current.muted = nextMuted
+                    setIsMuted(nextMuted)
+                    syncEngineRef.current?.broadcastAction(nextMuted ? 'mute' : 'unmute', { isMuted: nextMuted })
                   }
                 }}
                 className="p-2 rounded-full hover:bg-white/10 text-white/80 transition"
@@ -1232,25 +1313,30 @@ export const WatchRoom = () => {
         )}
       </div>
 
-      {/* 2. Video Source Picker & URL input */}
+      {/* 2. Video Source Picker & Google Drive / URL input */}
       <div className={`glass rounded-3xl p-4 border ${currentTheme.border} space-y-3`}>
-        <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 flex items-center gap-1.5">
-          <LinkIcon className={`w-3.5 h-3.5 ${currentTheme.activeText}`} /> Play Video by Direct HTTPS URL
-        </h3>
+        <div className="flex flex-col gap-1">
+          <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 flex items-center gap-1.5">
+            <LinkIcon className={`w-3.5 h-3.5 ${currentTheme.activeText}`} /> Watch via Google Drive or Web Link (Synced for Both)
+          </h3>
+          <p className="text-[11px] text-slate-500 dark:text-slate-400">
+            Upload your movie to Google Drive, set link sharing to <strong>"Anyone with the link can view"</strong>, and paste the link below. Play, pause, seek, and mute will synchronize live for both of you!
+          </p>
+        </div>
 
         <form onSubmit={handleLoadUrl} className="flex gap-2">
           <input
-            type="url"
+            type="text"
             value={inputUrl}
             onChange={(e) => setInputUrl(e.target.value)}
-            placeholder="Paste direct HTTPS video URL (e.g. https://.../movie.mp4)"
+            placeholder="Paste Google Drive link (https://drive.google.com/...) or direct video URL"
             className={`flex-1 px-3.5 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 ${currentTheme.ring}`}
           />
           <button
             type="submit"
-            className={`px-4 py-2 rounded-xl ${currentTheme.buttonGrad} text-white text-xs font-semibold shadow-md ${currentTheme.shadow} active:scale-95 transition`}
+            className={`px-4 py-2 rounded-xl ${currentTheme.buttonGrad} text-white text-xs font-semibold shadow-md ${currentTheme.shadow} active:scale-95 transition whitespace-nowrap`}
           >
-            Load
+            Load for Both
           </button>
         </form>
 
