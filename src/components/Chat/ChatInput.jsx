@@ -15,6 +15,7 @@ import {
 import { VoiceRecorder } from './VoiceRecorder'
 import { GifPicker } from './GifPicker'
 import { compressImage } from '../../lib/storageHelper'
+import { useTheme } from '../../context/ThemeContext'
 import confetti from 'canvas-confetti'
 
 export const ChatInput = ({
@@ -29,6 +30,7 @@ export const ChatInput = ({
   isUploading,
   uploadProgress,
 }) => {
+  const { currentTheme } = useTheme()
   const [text, setText] = useState('')
   const [isVoiceActive, setIsVoiceActive] = useState(false)
   const [isGifPickerOpen, setIsGifPickerOpen] = useState(false)
@@ -121,16 +123,16 @@ export const ChatInput = ({
       particleCount: 30,
       spread: 70,
       origin: { y: 0.8 },
-      colors: ['#f43f5e', '#fb7185', '#fda4af'],
+      colors: currentTheme.preview || ['#f43f5e', '#fb7185', '#fda4af'],
     })
     onSendMessage?.('💖')
   }
 
   return (
-    <div className="w-full glass border-t border-rose-200/60 dark:border-rose-900/40 p-2 sm:p-3 relative z-20">
+    <div className={`w-full glass border-t ${currentTheme.border} p-2 sm:p-3 relative z-20 transition-colors duration-200`}>
       {/* Uploading progress bar banner */}
       {isUploading && (
-        <div className="mb-2 p-2 rounded-xl bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-900 text-xs text-rose-600 dark:text-rose-300 flex items-center justify-between animate-fade-in">
+        <div className={`mb-2 p-2 rounded-xl bg-white/80 dark:bg-midnight-900/80 border ${currentTheme.border} text-xs ${currentTheme.activeText} flex items-center justify-between animate-fade-in`}>
           <div className="flex items-center gap-2">
             <Loader2 className="w-4 h-4 animate-spin" />
             <span>Uploading your media securely to private storage...</span>
@@ -141,11 +143,11 @@ export const ChatInput = ({
 
       {/* Replying banner */}
       {replyingTo && (
-        <div className="mb-2 p-2 rounded-xl bg-rose-100/70 dark:bg-rose-950/40 border-l-4 border-rose-500 text-xs flex items-center justify-between animate-fade-in">
+        <div className={`mb-2 p-2 rounded-xl bg-white/80 dark:bg-midnight-900/80 border-l-4 ${currentTheme.border} text-xs flex items-center justify-between animate-fade-in`}>
           <div className="flex items-center gap-2 truncate">
-            <CornerDownRight className="w-4 h-4 text-rose-500 shrink-0" />
+            <CornerDownRight className={`w-4 h-4 ${currentTheme.activeText} shrink-0`} />
             <div className="truncate">
-              <span className="font-semibold text-rose-700 dark:text-rose-300 block text-[10px]">
+              <span className={`font-semibold ${currentTheme.activeText} block text-[10px]`}>
                 Replying to message:
               </span>
               <span className="text-slate-600 dark:text-slate-300 truncate block">
@@ -204,7 +206,7 @@ export const ChatInput = ({
           <button
             type="button"
             onClick={() => fileInputRef.current?.click()}
-            className="p-2 sm:p-2.5 rounded-full text-slate-500 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-slate-800 transition"
+            className="p-2 sm:p-2.5 rounded-full text-slate-500 hover:text-rose-500 hover:bg-slate-100 dark:hover:bg-midnight-800 transition"
             title="Attach photo or video"
             aria-label="Attach photo or video"
           >
@@ -215,7 +217,7 @@ export const ChatInput = ({
           <button
             type="button"
             onClick={() => setIsGifPickerOpen(true)}
-            className="p-2 sm:p-2.5 rounded-full text-slate-500 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-slate-800 transition"
+            className="p-2 sm:p-2.5 rounded-full text-slate-500 hover:text-rose-500 hover:bg-slate-100 dark:hover:bg-midnight-800 transition"
             title="Romantic Stickers & GIFs"
             aria-label="Open stickers and GIFs"
           >
@@ -223,7 +225,7 @@ export const ChatInput = ({
           </button>
 
           {/* Text input area */}
-          <div className="flex-1 min-w-0 bg-white/80 dark:bg-midnight-800/80 rounded-2xl border border-rose-200/60 dark:border-rose-900/40 focus-within:ring-2 focus-within:ring-rose-400 px-3 py-2 transition">
+          <div className={`flex-1 min-w-0 bg-white/80 dark:bg-midnight-800/80 rounded-2xl border ${currentTheme.border} focus-within:ring-2 focus-within:ring-opacity-40 px-3 py-2 transition`}>
             <textarea
               ref={textareaRef}
               rows={1}
@@ -241,7 +243,7 @@ export const ChatInput = ({
               <button
                 type="button"
                 onClick={() => setIsVoiceActive(true)}
-                className="p-2 sm:p-2.5 rounded-full text-rose-500 hover:bg-rose-50 dark:hover:bg-slate-800 active:scale-95 transition"
+                className={`p-2 sm:p-2.5 rounded-full ${currentTheme.activeText} hover:bg-slate-100 dark:hover:bg-midnight-800 active:scale-95 transition`}
                 title="Record voice message"
                 aria-label="Record voice note"
               >
@@ -251,11 +253,11 @@ export const ChatInput = ({
               <button
                 type="button"
                 onClick={handleSendHeart}
-                className="p-2 sm:p-2.5 rounded-full text-rose-500 hover:bg-rose-50 dark:hover:bg-slate-800 active:scale-125 transition"
+                className={`p-2 sm:p-2.5 rounded-full ${currentTheme.activeText} hover:bg-slate-100 dark:hover:bg-midnight-800 active:scale-125 transition`}
                 title="Send love burst"
                 aria-label="Send love burst"
               >
-                <Heart className="w-5 h-5 fill-current text-rose-500" />
+                <Heart className="w-5 h-5 fill-current" />
               </button>
             </div>
           ) : (
@@ -264,7 +266,7 @@ export const ChatInput = ({
               type="button"
               onClick={handleSend}
               disabled={isUploading}
-              className="p-2.5 rounded-full bg-gradient-to-r from-rose-500 to-pink-500 hover:opacity-95 text-white shadow-md shadow-rose-500/30 active:scale-95 transition disabled:opacity-50"
+              className={`p-2.5 rounded-full ${currentTheme.buttonGrad} hover:opacity-95 text-white shadow-md active:scale-95 transition disabled:opacity-50`}
               title="Send message"
               aria-label="Send message"
             >

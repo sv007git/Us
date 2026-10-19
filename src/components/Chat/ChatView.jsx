@@ -13,16 +13,20 @@ import {
 import { supabase } from '../../lib/supabaseClient'
 import { useAuth } from '../../context/AuthContext'
 import { useCouple } from '../../context/CoupleContext'
+import { useTheme } from '../../context/ThemeContext'
 import { uploadCoupleMedia, getSignedMediaUrl } from '../../lib/storageHelper'
 import { showBrowserNotification, playNotificationSound } from '../../lib/notificationHelper'
+import { toggleMessageReaction } from '../../lib/reactionHelper'
 import { MessageBubble } from './MessageBubble'
 import { ChatInput } from './ChatInput'
 import { MediaLightbox } from './MediaLightbox'
 import { format, isToday, isYesterday } from 'date-fns'
+import confetti from 'canvas-confetti'
 
 export const ChatView = ({ currentTab = 'chat', onNavigate = null, onShowToast = null }) => {
   const { user } = useAuth()
   const { coupleSpace, partner } = useCouple()
+  const { currentTheme } = useTheme()
 
   const [messages, setMessages] = useState([])
   const [loading, setLoading] = useState(true)
@@ -100,7 +104,7 @@ export const ChatView = ({ currentTab = 'chat', onNavigate = null, onShowToast =
     fetchMessages()
   }, [fetchMessages])
 
-  // Realtime subscription for incoming/edited/deleted messages & instant broadcast
+  // Realtime subscription for incoming/edited/deleted messages & reactions broadcast
   useEffect(() => {
     if (!supabase || !coupleSpace?.id) return
 
@@ -166,6 +170,22 @@ export const ChatView = ({ currentTab = 'chat', onNavigate = null, onShowToast =
       .on('broadcast', { event: 'delete-message' }, ({ payload }) => {
         if (!payload || !payload.id) return
         setMessages((prev) => prev.filter((m) => m.id !== payload.id))
+      })
+      .on('broadcast', { event: 'message-reaction' }, ({ payload }) => {
+        if (!payload || !payload.messageId) return
+        setMessages((prev) =>
+          prev.map((m) =>
+            m.id === payload.messageId
+              ? {
+                  ...m,
+                  media_metadata: {
+                    ...(m.media_metadata || {}),
+                    reactions: payload.reactions || {},
+                  },
+                }
+              : m
+          )
+        )
       })
       .on('broadcast', { event: 'clear-chat-history' }, () => {
         setMessages([])
@@ -324,6 +344,56 @@ export const ChatView = ({ currentTab = 'chat', onNavigate = null, onShowToast =
     }
   }
 
+  // Toggle WhatsApp-style reaction on message
+  const handleToggleReaction = async (messageId, emoji) => {
+    if (!user?.id || !messageId) return
+
+    let updatedMsg = null
+    let updatedReactions = null
+
+    setMessages((prev) =>
+      prev.map((msg) => {
+        if (msg.id !== messageId) return msg
+
+        const currentReactions = msg.media_metadata?.reactions || {}
+        const reactions = toggleMessageReaction(currentReactions, emoji, user.id)
+        const updatedMetadata = { ...(msg.media_metadata || {}), reactions }
+        updatedMsg = { ...msg, media_metadata: updatedMetadata }
+        updatedReactions = reactions
+        return updatedMsg
+      })
+    )
+
+    // Broadcast instant reaction to partner
+    chatChannelRef.current?.send({
+      type: 'broadcast',
+      event: 'message-reaction',
+      payload: { messageId, reactions: updatedReactions },
+    })
+
+    // Confetti celebration
+    confetti({
+      particleCount: 16,
+      spread: 45,
+      origin: { y: 0.6 },
+      colors: currentTheme.preview || ['#f43f5e', '#ec4899', '#fda4af'],
+    })
+
+    // Persist reaction update to database if real message ID
+    if (supabase && typeof messageId === 'string' && messageId.length > 20) {
+      try {
+        await supabase
+          .from('messages')
+          .update({
+            media_metadata: updatedMsg?.media_metadata || { reactions: updatedReactions },
+          })
+          .eq('id', messageId)
+      } catch (err) {
+        console.error('Error saving message reaction:', err)
+      }
+    }
+  }
+
   // Edit existing message
   const handleSaveEdit = async (id, newContent) => {
     if (!supabase || !id) return
@@ -425,7 +495,7 @@ export const ChatView = ({ currentTab = 'chat', onNavigate = null, onShowToast =
 
     return (
       <div className="flex items-center justify-center my-4 select-none">
-        <span className="px-3 py-1 rounded-full bg-rose-100/70 dark:bg-rose-950/40 border border-rose-200/50 dark:border-rose-900/30 text-[11px] font-semibold text-rose-600 dark:text-rose-300">
+        <span className={`px-3 py-1 rounded-full bg-white/80 dark:bg-midnight-900/80 border ${currentTheme.border} text-[11px] font-semibold ${currentTheme.activeText} shadow-sm backdrop-blur-sm`}>
           {label}
         </span>
       </div>
@@ -438,16 +508,16 @@ export const ChatView = ({ currentTab = 'chat', onNavigate = null, onShowToast =
   return (
     <div className="flex-1 flex flex-col h-full min-h-0 relative overflow-hidden bg-transparent">
       {/* Top Chat Subheader / Action Bar */}
-      <div className="w-full glass border-b border-rose-200/50 dark:border-rose-900/30 px-4 py-2 flex items-center justify-between text-xs shrink-0 z-10">
+      <div className={`w-full glass border-b ${currentTheme.border} px-4 py-2 flex items-center justify-between text-xs shrink-0 z-10 transition-colors duration-200`}>
         <div className="flex items-center space-x-2">
           {partner?.avatar_url ? (
             <img
               src={partner.avatar_url}
               alt={partner.display_name || 'Partner'}
-              className="w-7 h-7 rounded-full object-cover border border-rose-300"
+              className="w-7 h-7 rounded-full object-cover border border-rose-300 dark:border-rose-700"
             />
           ) : (
-            <div className="w-7 h-7 rounded-full bg-rose-500/20 text-rose-500 flex items-center justify-center font-bold">
+            <div className={`w-7 h-7 rounded-full bg-gradient-to-tr ${currentTheme.primary} text-white flex items-center justify-center font-bold text-xs shadow-sm`}>
               {partner?.display_name?.charAt(0) || 'L'}
             </div>
           )}
@@ -456,7 +526,11 @@ export const ChatView = ({ currentTab = 'chat', onNavigate = null, onShowToast =
               {partner?.display_name || 'My Love'}
             </span>
             <span className="text-[10px] text-slate-400 block -mt-0.5">
-              {isPartnerTyping ? 'typing...' : 'Private end-to-end sanctuary'}
+              {isPartnerTyping ? (
+                <span className={currentTheme.activeText}>typing...</span>
+              ) : (
+                'Private end-to-end sanctuary'
+              )}
             </span>
           </div>
         </div>
@@ -466,7 +540,7 @@ export const ChatView = ({ currentTab = 'chat', onNavigate = null, onShowToast =
           <button
             type="button"
             onClick={() => setShowChatMenu((prev) => !prev)}
-            className="p-1.5 rounded-full hover:bg-rose-50 dark:hover:bg-slate-800 text-slate-500 hover:text-slate-700 dark:hover:text-slate-200 transition"
+            className="p-1.5 rounded-full hover:bg-slate-100 dark:hover:bg-midnight-800 text-slate-500 hover:text-slate-700 dark:hover:text-slate-200 transition"
             title="Chat Options"
             aria-label="Chat options"
           >
@@ -474,7 +548,7 @@ export const ChatView = ({ currentTab = 'chat', onNavigate = null, onShowToast =
           </button>
 
           {showChatMenu && (
-            <div className="absolute right-0 top-full mt-1 w-44 bg-white dark:bg-midnight-900 border border-rose-200 dark:border-rose-900/40 rounded-2xl shadow-xl py-1 text-xs font-medium text-slate-700 dark:text-slate-200 z-30 animate-scale-up">
+            <div className={`absolute right-0 top-full mt-1 w-44 bg-white dark:bg-midnight-900 border ${currentTheme.border} rounded-2xl shadow-xl py-1 text-xs font-medium text-slate-700 dark:text-slate-200 z-30 animate-scale-up`}>
               <button
                 type="button"
                 onClick={() => {
@@ -512,13 +586,13 @@ export const ChatView = ({ currentTab = 'chat', onNavigate = null, onShowToast =
       >
         {loading ? (
           <div className="h-full flex items-center justify-center">
-            <div className="w-8 h-8 border-3 border-rose-500 border-t-transparent rounded-full animate-spin" />
+            <div className={`w-8 h-8 border-3 border-current ${currentTheme.activeText} border-t-transparent rounded-full animate-spin`} />
           </div>
         ) : visibleMessages.length === 0 ? (
           /* Empty State */
           <div className="h-full flex flex-col items-center justify-center text-center p-6 text-slate-400">
-            <div className="w-16 h-16 rounded-3xl bg-gradient-to-tr from-rose-100 to-pink-100 dark:from-rose-950/50 dark:to-pink-950/50 flex items-center justify-center text-rose-500 mb-3 shadow-inner">
-              <Heart className="w-8 h-8 fill-current text-rose-500 animate-heartbeat" />
+            <div className={`w-16 h-16 rounded-3xl bg-gradient-to-tr ${currentTheme.primary} flex items-center justify-center text-white mb-3 shadow-md`}>
+              <Heart className="w-8 h-8 fill-current text-white animate-heartbeat" />
             </div>
             <h3 className="text-base font-bold text-slate-800 dark:text-slate-200">
               Welcome to Your Private Sanctuary 💗
@@ -528,7 +602,7 @@ export const ChatView = ({ currentTab = 'chat', onNavigate = null, onShowToast =
             </p>
             <button
               onClick={() => handleSendMessage('Hey my love! 💖')}
-              className="mt-4 px-4 py-2 rounded-full bg-rose-500 hover:bg-rose-600 text-white text-xs font-semibold shadow-md shadow-rose-500/20 active:scale-95 transition"
+              className={`mt-4 px-4 py-2 rounded-full ${currentTheme.buttonGrad} hover:opacity-95 text-white text-xs font-semibold shadow-md active:scale-95 transition`}
             >
               Say Hello 👋
             </button>
@@ -559,6 +633,8 @@ export const ChatView = ({ currentTab = 'chat', onNavigate = null, onShowToast =
                   onUnsend={handleUnsendMessage}
                   onDeleteForMe={handleDeleteForMe}
                   onOpenLightbox={(media) => setActiveLightboxMedia(media)}
+                  onToggleReaction={handleToggleReaction}
+                  currentUserId={user?.id}
                 />
               </React.Fragment>
             )
@@ -571,7 +647,7 @@ export const ChatView = ({ currentTab = 'chat', onNavigate = null, onShowToast =
       {showScrollBottom && (
         <button
           onClick={() => scrollToBottom(true)}
-          className="absolute bottom-20 right-4 p-2.5 rounded-full bg-white dark:bg-midnight-800 text-rose-500 shadow-lg border border-rose-200 dark:border-rose-900 active:scale-95 transition animate-bounce-short z-20"
+          className={`absolute bottom-20 right-4 p-2.5 rounded-full bg-white dark:bg-midnight-800 ${currentTheme.activeText} shadow-lg border ${currentTheme.border} active:scale-95 transition animate-bounce-short z-20`}
           title="Scroll to bottom"
         >
           <ArrowDown className="w-4 h-4" />
@@ -580,11 +656,11 @@ export const ChatView = ({ currentTab = 'chat', onNavigate = null, onShowToast =
 
       {/* Realtime Partner Typing Indicator */}
       {isPartnerTyping && (
-        <div className="px-4 py-1 text-xs text-rose-500 dark:text-rose-400 flex items-center gap-1.5 animate-pulse select-none bg-rose-50/50 dark:bg-midnight-900/50 border-t border-rose-100/50 dark:border-rose-950/40">
+        <div className={`px-4 py-1.5 text-xs ${currentTheme.activeText} flex items-center gap-1.5 animate-pulse select-none bg-white/60 dark:bg-midnight-900/60 border-t ${currentTheme.border}`}>
           <div className="flex gap-1 items-center">
-            <span className="w-1.5 h-1.5 rounded-full bg-rose-500 animate-bounce" style={{ animationDelay: '0ms' }} />
-            <span className="w-1.5 h-1.5 rounded-full bg-rose-500 animate-bounce" style={{ animationDelay: '150ms' }} />
-            <span className="w-1.5 h-1.5 rounded-full bg-rose-500 animate-bounce" style={{ animationDelay: '300ms' }} />
+            <span className={`w-1.5 h-1.5 rounded-full ${currentTheme.badge.split(' ')[0]} animate-bounce`} style={{ animationDelay: '0ms' }} />
+            <span className={`w-1.5 h-1.5 rounded-full ${currentTheme.badge.split(' ')[0]} animate-bounce`} style={{ animationDelay: '150ms' }} />
+            <span className={`w-1.5 h-1.5 rounded-full ${currentTheme.badge.split(' ')[0]} animate-bounce`} style={{ animationDelay: '300ms' }} />
           </div>
           <span className="italic font-medium">{partner?.display_name || 'My Love'} is typing...</span>
         </div>

@@ -2,6 +2,7 @@ import { describe, it, expect, beforeEach } from 'vitest'
 import { compressImage, deleteCoupleMedia } from '../src/lib/storageHelper'
 import { isSoundEnabled, setSoundEnabled, getNotificationPermission } from '../src/lib/notificationHelper'
 import { THEME_PALETTES } from '../src/context/ThemeContext'
+import { toggleMessageReaction, getTotalReactionCount, REACTION_EMOJIS } from '../src/lib/reactionHelper'
 
 describe('New Features - Compression, Notifications, Themes & Media Management', () => {
   beforeEach(() => {
@@ -47,5 +48,37 @@ describe('New Features - Compression, Notifications, Themes & Media Management',
   it('handles deleteCoupleMedia safely with null or empty path', async () => {
     const res = await deleteCoupleMedia(null)
     expect(res).toBe(false)
+  })
+
+  it('manages WhatsApp-style message reactions correctly with toggle and count', () => {
+    expect(REACTION_EMOJIS).toEqual(['❤️', '😂', '😮', '😢', '👏', '🔥', '💗'])
+
+    // Initial reaction by user1
+    let reactions = toggleMessageReaction({}, '❤️', 'user-1')
+    expect(reactions['❤️']).toEqual(['user-1'])
+    expect(getTotalReactionCount(reactions)).toBe(1)
+
+    // Second user reacts with same emoji
+    reactions = toggleMessageReaction(reactions, '❤️', 'user-2')
+    expect(reactions['❤️']).toEqual(['user-1', 'user-2'])
+    expect(getTotalReactionCount(reactions)).toBe(2)
+
+    // User1 reacts with another emoji
+    reactions = toggleMessageReaction(reactions, '🔥', 'user-1')
+    expect(reactions['🔥']).toEqual(['user-1'])
+    expect(getTotalReactionCount(reactions)).toBe(3)
+
+    // User1 un-reacts to ❤️ (toggle off)
+    reactions = toggleMessageReaction(reactions, '❤️', 'user-1')
+    expect(reactions['❤️']).toEqual(['user-2'])
+    expect(getTotalReactionCount(reactions)).toBe(2)
+
+    // User2 un-reacts to ❤️ -> key should be deleted
+    reactions = toggleMessageReaction(reactions, '❤️', 'user-2')
+    expect(reactions['❤️']).toBeUndefined()
+    expect(getTotalReactionCount(reactions)).toBe(1)
+
+    // Safe handling of null inputs
+    expect(toggleMessageReaction(null, '❤️', null)).toEqual({})
   })
 })

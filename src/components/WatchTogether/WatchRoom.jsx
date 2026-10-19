@@ -41,11 +41,11 @@ import { VoiceRecorder } from '../Chat/VoiceRecorder'
 import { GifPicker } from '../Chat/GifPicker'
 import confetti from 'canvas-confetti'
 
+import { REACTION_EMOJIS, toggleMessageReaction } from '../../lib/reactionHelper'
+
 // High-quality public test video sample so couples can test sync immediately
 const DEFAULT_VIDEO_URL =
   'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4'
-
-const REACTION_EMOJIS = ['❤️', '😂', '😮', '😢', '👏', '🔥', '💗']
 
 export const WatchRoom = () => {
   const { user, profile } = useAuth()
@@ -622,22 +622,7 @@ export const WatchRoom = () => {
       prev.map((msg) => {
         if (msg.id !== messageId) return msg
 
-        const reactions = { ...(msg.media_metadata?.reactions || {}) }
-        const currentList = Array.isArray(reactions[emoji]) ? [...reactions[emoji]] : []
-        const userIndex = currentList.indexOf(user.id)
-
-        if (userIndex > -1) {
-          currentList.splice(userIndex, 1)
-        } else {
-          currentList.push(user.id)
-        }
-
-        if (currentList.length > 0) {
-          reactions[emoji] = currentList
-        } else {
-          delete reactions[emoji]
-        }
-
+        const reactions = toggleMessageReaction(msg.media_metadata?.reactions, emoji, user.id)
         const updatedMetadata = { ...(msg.media_metadata || {}), reactions }
 
         // Sync to Supabase if valid UUID
