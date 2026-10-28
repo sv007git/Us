@@ -193,7 +193,7 @@ export const ChatInput = ({
         />
       ) : (
         /* Regular Input Controls */
-        <div className="flex items-end gap-1.5 sm:gap-2">
+        <div className="flex items-end gap-1 sm:gap-2">
           {/* File attachment picker */}
           <input
             ref={fileInputRef}
@@ -206,26 +206,26 @@ export const ChatInput = ({
           <button
             type="button"
             onClick={() => fileInputRef.current?.click()}
-            className="p-2 sm:p-2.5 rounded-full text-slate-500 hover:text-rose-500 hover:bg-slate-100 dark:hover:bg-midnight-800 transition"
+            className="p-1.5 sm:p-2.5 rounded-full text-slate-500 hover:text-rose-500 hover:bg-slate-100 dark:hover:bg-midnight-800 transition"
             title="Attach photo or video"
             aria-label="Attach photo or video"
           >
-            <Paperclip className="w-5 h-5" />
+            <Paperclip className="w-4 h-4 sm:w-5 sm:h-5" />
           </button>
 
           {/* Stickers & GIF picker toggle */}
           <button
             type="button"
             onClick={() => setIsGifPickerOpen(true)}
-            className="p-2 sm:p-2.5 rounded-full text-slate-500 hover:text-rose-500 hover:bg-slate-100 dark:hover:bg-midnight-800 transition"
+            className="p-1.5 sm:p-2.5 rounded-full text-slate-500 hover:text-rose-500 hover:bg-slate-100 dark:hover:bg-midnight-800 transition"
             title="Romantic Stickers & GIFs"
             aria-label="Open stickers and GIFs"
           >
-            <Smile className="w-5 h-5" />
+            <Smile className="w-4 h-4 sm:w-5 sm:h-5" />
           </button>
 
           {/* Text input area */}
-          <div className={`flex-1 min-w-0 bg-white/80 dark:bg-midnight-800/80 rounded-2xl border ${currentTheme.border} focus-within:ring-2 focus-within:ring-opacity-40 px-3 py-2 transition`}>
+          <div className={`flex-1 min-w-0 bg-white/80 dark:bg-midnight-800/80 rounded-2xl border ${currentTheme.border} focus-within:ring-2 focus-within:ring-opacity-40 px-2.5 sm:px-3 py-1.5 sm:py-2 transition`}>
             <textarea
               ref={textareaRef}
               rows={1}
@@ -239,25 +239,25 @@ export const ChatInput = ({
 
           {/* Voice recorder trigger */}
           {!text.trim() && !editingMessage ? (
-            <div className="flex items-center gap-1">
+            <div className="flex items-center gap-0.5 sm:gap-1 shrink-0">
               <button
                 type="button"
                 onClick={() => setIsVoiceActive(true)}
-                className={`p-2 sm:p-2.5 rounded-full ${currentTheme.activeText} hover:bg-slate-100 dark:hover:bg-midnight-800 active:scale-95 transition`}
+                className={`p-1.5 sm:p-2.5 rounded-full ${currentTheme.activeText} hover:bg-slate-100 dark:hover:bg-midnight-800 active:scale-95 transition`}
                 title="Record voice message"
                 aria-label="Record voice note"
               >
-                <Mic className="w-5 h-5" />
+                <Mic className="w-4 h-4 sm:w-5 sm:h-5" />
               </button>
 
               <button
                 type="button"
                 onClick={handleSendHeart}
-                className={`p-2 sm:p-2.5 rounded-full ${currentTheme.activeText} hover:bg-slate-100 dark:hover:bg-midnight-800 active:scale-125 transition`}
+                className={`p-1.5 sm:p-2.5 rounded-full ${currentTheme.activeText} hover:bg-slate-100 dark:hover:bg-midnight-800 active:scale-125 transition`}
                 title="Send love burst"
                 aria-label="Send love burst"
               >
-                <Heart className="w-5 h-5 fill-current" />
+                <Heart className="w-4 h-4 sm:w-5 sm:h-5 fill-current" />
               </button>
             </div>
           ) : (
@@ -266,11 +266,11 @@ export const ChatInput = ({
               type="button"
               onClick={handleSend}
               disabled={isUploading}
-              className={`p-2.5 rounded-full ${currentTheme.buttonGrad} hover:opacity-95 text-white shadow-md active:scale-95 transition disabled:opacity-50`}
+              className={`p-2 sm:p-2.5 rounded-full ${currentTheme.buttonGrad} hover:opacity-95 text-white shadow-md active:scale-95 transition disabled:opacity-50 shrink-0`}
               title="Send message"
               aria-label="Send message"
             >
-              <Send className="w-4 h-4 ml-0.5" />
+              <Send className="w-3.5 h-3.5 sm:w-4 sm:h-4 ml-0.5" />
             </button>
           )}
         </div>

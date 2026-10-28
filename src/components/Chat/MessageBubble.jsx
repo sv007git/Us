@@ -237,27 +237,27 @@ export const MessageBubble = ({
       <div className="flex items-center gap-1.5 max-w-full">
         {/* Left side actions for own messages */}
         {isOwn && (
-          <div className="flex items-center gap-1 opacity-75 sm:opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
+          <div className="flex items-center gap-0.5 sm:gap-1 opacity-75 sm:opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
             <button
               type="button"
               onClick={() => {
                 setShowReactionPicker((prev) => !prev)
                 setShowMenu(false)
               }}
-              className="p-1.5 rounded-full bg-white dark:bg-midnight-800 border border-slate-200 dark:border-slate-700 shadow-sm text-slate-500 hover:text-rose-500 active:scale-95 transition"
+              className="p-1 sm:p-1.5 rounded-full bg-white dark:bg-midnight-800 border border-slate-200 dark:border-slate-700 shadow-sm text-slate-500 hover:text-rose-500 active:scale-95 transition"
               title="React to message"
               aria-label="React with emoji"
             >
-              <Smile className="w-3.5 h-3.5" />
+              <Smile className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
             </button>
             <button
               type="button"
               onClick={() => onReply?.(message)}
-              className="p-1.5 rounded-full bg-white dark:bg-midnight-800 border border-slate-200 dark:border-slate-700 shadow-sm text-slate-500 hover:text-slate-700 dark:hover:text-slate-200 active:scale-95 transition"
+              className="p-1 sm:p-1.5 rounded-full bg-white dark:bg-midnight-800 border border-slate-200 dark:border-slate-700 shadow-sm text-slate-500 hover:text-slate-700 dark:hover:text-slate-200 active:scale-95 transition"
               title="Reply"
               aria-label="Reply to message"
             >
-              <Reply className="w-3.5 h-3.5" />
+              <Reply className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
             </button>
             <button
               type="button"
@@ -265,16 +265,16 @@ export const MessageBubble = ({
                 setShowMenu((prev) => !prev)
                 setShowReactionPicker(false)
               }}
-              className="p-1.5 rounded-full bg-white dark:bg-midnight-800 border border-slate-200 dark:border-slate-700 shadow-sm text-slate-500 hover:text-slate-700 dark:hover:text-slate-200 active:scale-95 transition"
+              className="p-1 sm:p-1.5 rounded-full bg-white dark:bg-midnight-800 border border-slate-200 dark:border-slate-700 shadow-sm text-slate-500 hover:text-slate-700 dark:hover:text-slate-200 active:scale-95 transition"
               title="Message options"
               aria-label="Message options"
             >
-              <MoreVertical className="w-3.5 h-3.5" />
+              <MoreVertical className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
             </button>
           </div>
         )}
 
-        <div className="relative max-w-[85%] sm:max-w-[70%]">
+        <div className="relative max-w-[85%] sm:max-w-[70%] w-fit">
           {/* Floating WhatsApp-Style Emoji Picker Bar Popup */}
           {showReactionPicker && (
             <div
@@ -332,7 +332,7 @@ export const MessageBubble = ({
 
           {/* Message Bubble Body */}
           <div
-            className={`rounded-2xl p-3 sm:p-3.5 shadow-sm text-sm break-words relative transition-all ${
+            className={`rounded-2xl p-2.5 sm:p-3.5 shadow-sm text-sm break-words relative transition-all w-fit max-w-full ${
               isOwn
                 ? `bg-gradient-to-r ${currentTheme.primary} text-white rounded-br-sm shadow-sm`
                 : `bg-white/95 dark:bg-midnight-900/90 border ${currentTheme.border} text-slate-800 dark:text-slate-100 rounded-bl-sm shadow-sm`
@@ -447,8 +447,8 @@ export const MessageBubble = ({
             {/* 5. Text Content + Timestamp & Status in a single line layout */}
             {content && message_type !== 'sticker' && (
               <div className="select-text leading-relaxed">
-                <div className="flex flex-wrap items-end justify-between gap-x-2.5 gap-y-0.5">
-                  <span className="whitespace-pre-wrap break-words">{content}</span>
+                <div className="flex flex-wrap items-end gap-x-2 gap-y-0.5 min-w-0">
+                  <span className="whitespace-pre-wrap break-words [overflow-wrap:anywhere] min-w-0">{content}</span>
                   <span
                     className={`inline-flex items-center gap-1 text-[10px] select-none ml-auto shrink-0 leading-none pb-0.5 ${
                       isOwn ? 'text-white/85' : 'text-slate-400 dark:text-slate-500'
@@ -597,27 +597,27 @@ export const MessageBubble = ({
 
         {/* Right side actions for partner messages */}
         {!isOwn && (
-          <div className="flex items-center gap-1 opacity-75 sm:opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
+          <div className="flex items-center gap-0.5 sm:gap-1 opacity-75 sm:opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
             <button
               type="button"
               onClick={() => {
                 setShowReactionPicker((prev) => !prev)
                 setShowMenu(false)
               }}
-              className="p-1.5 rounded-full bg-white dark:bg-midnight-800 border border-slate-200 dark:border-slate-700 shadow-sm text-slate-500 hover:text-rose-500 active:scale-95 transition"
+              className="p-1 sm:p-1.5 rounded-full bg-white dark:bg-midnight-800 border border-slate-200 dark:border-slate-700 shadow-sm text-slate-500 hover:text-rose-500 active:scale-95 transition"
               title="React to message"
               aria-label="React with emoji"
             >
-              <Smile className="w-3.5 h-3.5" />
+              <Smile className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
             </button>
             <button
               type="button"
               onClick={() => onReply?.(message)}
-              className="p-1.5 rounded-full bg-white dark:bg-midnight-800 border border-slate-200 dark:border-slate-700 shadow-sm text-slate-500 hover:text-slate-700 dark:hover:text-slate-200 active:scale-95 transition"
+              className="p-1 sm:p-1.5 rounded-full bg-white dark:bg-midnight-800 border border-slate-200 dark:border-slate-700 shadow-sm text-slate-500 hover:text-slate-700 dark:hover:text-slate-200 active:scale-95 transition"
               title="Reply"
               aria-label="Reply to message"
             >
-              <Reply className="w-3.5 h-3.5" />
+              <Reply className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
             </button>
             <button
               type="button"
@@ -625,11 +625,11 @@ export const MessageBubble = ({
                 setShowMenu((prev) => !prev)
                 setShowReactionPicker(false)
               }}
-              className="p-1.5 rounded-full bg-white dark:bg-midnight-800 border border-slate-200 dark:border-slate-700 shadow-sm text-slate-500 hover:text-slate-700 dark:hover:text-slate-200 active:scale-95 transition"
+              className="p-1 sm:p-1.5 rounded-full bg-white dark:bg-midnight-800 border border-slate-200 dark:border-slate-700 shadow-sm text-slate-500 hover:text-slate-700 dark:hover:text-slate-200 active:scale-95 transition"
               title="Message options"
               aria-label="Message options"
             >
-              <MoreVertical className="w-3.5 h-3.5" />
+              <MoreVertical className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
             </button>
           </div>
         )}

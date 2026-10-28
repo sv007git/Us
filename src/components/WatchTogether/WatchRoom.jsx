@@ -896,7 +896,7 @@ export const WatchRoom = () => {
         </div>
 
         {/* Live Audio / Video Call Controls in Watch Room */}
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           {callState === 'idle' && (
             <>
               <button
@@ -1093,11 +1093,11 @@ export const WatchRoom = () => {
             <span>{formatSeconds(duration)}</span>
           </div>
 
-          <div className="flex items-center justify-between text-white">
-            <div className="flex items-center space-x-2">
+          <div className="flex flex-wrap items-center justify-between gap-2 text-white">
+            <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
               <button
                 onClick={handleTogglePlay}
-                className="p-2 rounded-full bg-white/20 hover:bg-white/30 text-white transition active:scale-95"
+                className="p-1.5 sm:p-2 rounded-full bg-white/20 hover:bg-white/30 text-white transition active:scale-95"
                 title={isPlaying ? 'Pause' : 'Play'}
               >
                 {isPlaying ? (
@@ -1116,7 +1116,7 @@ export const WatchRoom = () => {
                     syncEngineRef.current?.broadcastAction('seek')
                   }
                 }}
-                className="p-2 rounded-full hover:bg-white/10 text-white/80 transition"
+                className="p-1.5 sm:p-2 rounded-full hover:bg-white/10 text-white/80 transition"
                 title="Rewind 10 seconds"
               >
                 <RotateCcw className="w-4 h-4" />
@@ -1132,7 +1132,7 @@ export const WatchRoom = () => {
                     syncEngineRef.current?.broadcastAction('seek')
                   }
                 }}
-                className="p-2 rounded-full hover:bg-white/10 text-white/80 transition"
+                className="p-1.5 sm:p-2 rounded-full hover:bg-white/10 text-white/80 transition"
                 title="Forward 10 seconds"
               >
                 <RotateCw className="w-4 h-4" />
@@ -1147,7 +1147,7 @@ export const WatchRoom = () => {
                     syncEngineRef.current?.broadcastAction(nextMuted ? 'mute' : 'unmute', { isMuted: nextMuted })
                   }
                 }}
-                className="p-2 rounded-full hover:bg-white/10 text-white/80 transition"
+                className="p-1.5 sm:p-2 rounded-full hover:bg-white/10 text-white/80 transition"
                 title={isMuted ? 'Unmute' : 'Mute'}
               >
                 {isMuted ? <VolumeX className="w-4 h-4" /> : <Volume2 className="w-4 h-4" />}
@@ -1157,7 +1157,7 @@ export const WatchRoom = () => {
               <button
                 onClick={handleCaptureScreenshot}
                 disabled={isCapturing}
-                className={`px-3 py-1.5 rounded-full ${currentTheme.buttonGrad} text-white text-xs font-semibold flex items-center gap-1.5 shadow-md ${currentTheme.shadow} active:scale-95 transition`}
+                className={`px-2.5 sm:px-3 py-1.5 rounded-full ${currentTheme.buttonGrad} text-white text-xs font-semibold flex items-center gap-1.5 shadow-md ${currentTheme.shadow} active:scale-95 transition`}
                 title="Take a screenshot of this movie scene to share with your partner"
               >
                 <Camera className="w-3.5 h-3.5" />
@@ -1607,70 +1607,74 @@ export const WatchRoom = () => {
         {/* Composer Form with Quick Attachment Actions */}
         {!isVoiceRecorderOpen && (
           <form onSubmit={handleSendRoomChat} className="space-y-2">
-            <div className="flex items-center gap-1.5">
-              {/* Quick Screenshot Button */}
-              <button
-                type="button"
-                onClick={handleCaptureScreenshot}
-                disabled={isCapturing}
-                className={`p-2 rounded-xl border ${currentTheme.border} bg-white dark:bg-slate-800 ${currentTheme.activeText} ${currentTheme.softHover} transition`}
-                title="Capture screenshot from movie"
-              >
-                <Camera className="w-4 h-4" />
-              </button>
+            <div className="flex flex-col sm:flex-row sm:items-center gap-1.5">
+              {/* Attachment / Action buttons */}
+              <div className="flex items-center gap-1 sm:gap-1.5 shrink-0">
+                {/* Quick Screenshot Button */}
+                <button
+                  type="button"
+                  onClick={handleCaptureScreenshot}
+                  disabled={isCapturing}
+                  className={`p-1.5 sm:p-2 rounded-xl border ${currentTheme.border} bg-white dark:bg-slate-800 ${currentTheme.activeText} ${currentTheme.softHover} transition`}
+                  title="Capture screenshot from movie"
+                >
+                  <Camera className="w-4 h-4" />
+                </button>
 
-              {/* Attach File Button */}
-              <button
-                type="button"
-                onClick={() => fileInputRef.current?.click()}
-                className={`p-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-500 hover:${currentTheme.activeText} hover:bg-slate-50 dark:hover:bg-slate-700 transition`}
-                title="Attach an image"
-              >
-                <Paperclip className="w-4 h-4" />
-              </button>
+                {/* Attach File Button */}
+                <button
+                  type="button"
+                  onClick={() => fileInputRef.current?.click()}
+                  className={`p-1.5 sm:p-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-500 hover:${currentTheme.activeText} hover:bg-slate-50 dark:hover:bg-slate-700 transition`}
+                  title="Attach an image"
+                >
+                  <Paperclip className="w-4 h-4" />
+                </button>
 
-              {/* Voice Note Button */}
-              <button
-                type="button"
-                onClick={() => setIsVoiceRecorderOpen(true)}
-                className={`p-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-500 hover:${currentTheme.activeText} hover:bg-slate-50 dark:hover:bg-slate-700 transition`}
-                title="Record a voice note"
-              >
-                <Mic className="w-4 h-4" />
-              </button>
+                {/* Voice Note Button */}
+                <button
+                  type="button"
+                  onClick={() => setIsVoiceRecorderOpen(true)}
+                  className={`p-1.5 sm:p-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-500 hover:${currentTheme.activeText} hover:bg-slate-50 dark:hover:bg-slate-700 transition`}
+                  title="Record a voice note"
+                >
+                  <Mic className="w-4 h-4" />
+                </button>
 
-              {/* GIF Button */}
-              <button
-                type="button"
-                onClick={() => setIsGifPickerOpen(true)}
-                className={`px-2.5 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-bold text-slate-600 dark:text-slate-300 hover:${currentTheme.activeText} hover:bg-slate-50 dark:hover:bg-slate-700 transition flex items-center gap-1`}
-                title="Send a GIF or sticker"
-              >
-                <Sparkles className={`w-3.5 h-3.5 ${currentTheme.activeText}`} />
-                <span>GIF</span>
-              </button>
+                {/* GIF Button */}
+                <button
+                  type="button"
+                  onClick={() => setIsGifPickerOpen(true)}
+                  className={`px-2 sm:px-2.5 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-bold text-slate-600 dark:text-slate-300 hover:${currentTheme.activeText} hover:bg-slate-50 dark:hover:bg-slate-700 transition flex items-center gap-1`}
+                  title="Send a GIF or sticker"
+                >
+                  <Sparkles className={`w-3.5 h-3.5 ${currentTheme.activeText}`} />
+                  <span>GIF</span>
+                </button>
+              </div>
 
-              {/* Text Input */}
-              <input
-                type="text"
-                value={chatText}
-                onChange={(e) => setChatText(e.target.value)}
-                placeholder={
-                  pendingAttachment
-                    ? 'Add a caption for this screenshot...'
-                    : 'Send note, comment or reaction...'
-                }
-                className={`flex-1 px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 ${currentTheme.ring}`}
-              />
+              {/* Text Input & Send */}
+              <div className="flex items-center gap-1.5 flex-1 min-w-0">
+                <input
+                  type="text"
+                  value={chatText}
+                  onChange={(e) => setChatText(e.target.value)}
+                  placeholder={
+                    pendingAttachment
+                      ? 'Add a caption for this screenshot...'
+                      : 'Send note, comment or reaction...'
+                  }
+                  className={`flex-1 min-w-0 px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 ${currentTheme.ring}`}
+                />
 
-              {/* Send Button */}
-              <button
-                type="submit"
-                disabled={isSending || (!chatText.trim() && !pendingAttachment)}
-                className={`p-2 rounded-xl ${currentTheme.buttonGrad} text-white hover:opacity-95 disabled:opacity-40 transition shadow-md ${currentTheme.shadow} active:scale-95`}
-              >
-                <Send className="w-4 h-4" />
-              </button>
+                <button
+                  type="submit"
+                  disabled={isSending || (!chatText.trim() && !pendingAttachment)}
+                  className={`p-2 rounded-xl ${currentTheme.buttonGrad} text-white hover:opacity-95 disabled:opacity-40 transition shadow-md ${currentTheme.shadow} active:scale-95 shrink-0`}
+                >
+                  <Send className="w-4 h-4" />
+                </button>
+              </div>
             </div>
           </form>
         )}

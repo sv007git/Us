@@ -133,7 +133,7 @@ export const DashboardView = ({ setCurrentTab }) => {
                 <Calendar className="w-4 h-4 text-white/80" />
                 <span className="text-xs text-white/90">Together For:</span>
               </div>
-              <div className="flex items-center gap-2 font-mono text-sm sm:text-base font-bold text-white">
+              <div className="flex flex-wrap items-center gap-1.5 sm:gap-2 font-mono text-xs sm:text-base font-bold text-white">
                 <span className="px-2 py-1 rounded-lg bg-white/20">{anniversaryStats.days} Days</span>
                 <span>:</span>
                 <span className="px-2 py-1 rounded-lg bg-white/20">{anniversaryStats.hours} Hours</span>
@@ -158,7 +158,7 @@ export const DashboardView = ({ setCurrentTab }) => {
 
       {/* 2. Partner Status & Live Mood Card */}
       <div className={`glass rounded-3xl p-5 border ${currentTheme.border} space-y-3`}>
-        <div className="flex items-center justify-between">
+        <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="flex items-center space-x-3">
             <div className="relative">
               <div className={`w-12 h-12 rounded-full bg-gradient-to-tr ${currentTheme.primary} flex items-center justify-center text-white font-bold text-lg shadow-md ${currentTheme.shadow}`}>
@@ -183,7 +183,7 @@ export const DashboardView = ({ setCurrentTab }) => {
             </div>
           </div>
 
-          <div className="text-right">
+          <div className="text-left sm:text-right shrink-0">
             <span className="text-[10px] font-semibold uppercase text-slate-400 block">
               Partner Mood
             </span>
