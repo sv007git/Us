@@ -147,9 +147,9 @@ export const NotesView = () => {
   return (
     <div className="flex-1 max-w-4xl mx-auto w-full p-4 pb-20 space-y-4">
       {/* Top Header */}
-      <div className={`glass rounded-3xl p-5 flex items-center justify-between border ${currentTheme.border}`}>
-        <div className="flex items-center space-x-3">
-          <div className={`w-10 h-10 rounded-2xl bg-gradient-to-tr ${currentTheme.primary} text-white flex items-center justify-center shadow-md ${currentTheme.shadow}`}>
+      <div className={`glass rounded-3xl p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-3.5 border ${currentTheme.border}`}>
+        <div className="flex items-start sm:items-center space-x-3">
+          <div className={`w-10 h-10 rounded-2xl bg-gradient-to-tr ${currentTheme.primary} text-white flex items-center justify-center shadow-md ${currentTheme.shadow} shrink-0`}>
             {activeTab === 'birthdays' ? (
               <Cake className="w-5 h-5" />
             ) : activeTab === 'cycle' ? (
@@ -158,15 +158,15 @@ export const NotesView = () => {
               <HeartHandshake className="w-5 h-5" />
             )}
           </div>
-          <div>
-            <h2 className="text-lg font-bold text-slate-900 dark:text-white">
+          <div className="min-w-0">
+            <h2 className="text-base sm:text-lg font-bold text-slate-900 dark:text-white truncate">
               {activeTab === 'birthdays'
-                ? 'Couples Birthday & Age Calculator 🎂'
+                ? 'Couples Birthday & Age 🎂'
                 : activeTab === 'cycle'
                 ? 'Cycle & Ovulation Hub 🌸'
                 : 'Love Notes & Bucket List 💌'}
             </h2>
-            <p className="text-xs text-slate-500 dark:text-slate-400">
+            <p className="text-xs text-slate-500 dark:text-slate-400 line-clamp-2 sm:line-clamp-none">
               {activeTab === 'birthdays'
                 ? 'Track your exact ages, upcoming birthday countdowns, and zodiac harmony.'
                 : activeTab === 'cycle'
@@ -184,7 +184,7 @@ export const NotesView = () => {
               setContent('')
               setIsCreating(true)
             }}
-            className={`py-2 px-3.5 rounded-full ${currentTheme.buttonGrad} hover:opacity-95 text-white text-xs font-semibold shadow-md ${currentTheme.shadow} active:scale-95 transition flex items-center gap-1.5`}
+            className={`self-start sm:self-auto py-2 px-3.5 rounded-full ${currentTheme.buttonGrad} hover:opacity-95 text-white text-xs font-semibold shadow-md ${currentTheme.shadow} active:scale-95 transition flex items-center gap-1.5 shrink-0`}
           >
             <Plus className="w-4 h-4" />
             <span>New Note</span>
@@ -193,44 +193,50 @@ export const NotesView = () => {
       </div>
 
       {/* Sub-Tab Navigation Bar */}
-      <div className={`flex p-1 ${currentTheme.softBg} rounded-2xl border ${currentTheme.borderLight}`}>
+      <div className={`flex p-1 ${currentTheme.softBg} rounded-2xl border ${currentTheme.borderLight} gap-1`}>
         <button
           type="button"
           onClick={() => setActiveTab('notes')}
-          className={`flex-1 py-2 text-xs font-semibold rounded-xl flex items-center justify-center gap-1.5 transition ${
+          className={`flex-1 py-2 px-2 text-[11px] sm:text-xs font-semibold rounded-xl flex items-center justify-center gap-1.5 transition ${
             activeTab === 'notes'
-              ? `bg-white dark:bg-midnight-800 ${currentTheme.activeText} shadow-sm`
+              ? `bg-white dark:bg-midnight-800 ${currentTheme.activeText} shadow-sm font-bold`
               : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'
           }`}
         >
-          <BookOpen className="w-3.5 h-3.5" />
-          <span>Love Notes</span>
+          <BookOpen className="w-3.5 h-3.5 shrink-0" />
+          <span className="truncate">Love Notes</span>
         </button>
 
         <button
           type="button"
           onClick={() => setActiveTab('birthdays')}
-          className={`flex-1 py-2 text-xs font-semibold rounded-xl flex items-center justify-center gap-1.5 transition ${
+          className={`flex-1 py-2 px-2 text-[11px] sm:text-xs font-semibold rounded-xl flex items-center justify-center gap-1.5 transition ${
             activeTab === 'birthdays'
-              ? `bg-white dark:bg-midnight-800 ${currentTheme.activeText} shadow-sm`
+              ? `bg-white dark:bg-midnight-800 ${currentTheme.activeText} shadow-sm font-bold`
               : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'
           }`}
         >
-          <Cake className="w-3.5 h-3.5" />
-          <span>Birthday & Age</span>
+          <Cake className="w-3.5 h-3.5 shrink-0" />
+          <span className="truncate">
+            <span className="sm:hidden">Birthdays</span>
+            <span className="hidden sm:inline">Birthday & Age</span>
+          </span>
         </button>
 
         <button
           type="button"
           onClick={() => setActiveTab('cycle')}
-          className={`flex-1 py-2 text-xs font-semibold rounded-xl flex items-center justify-center gap-1.5 transition ${
+          className={`flex-1 py-2 px-2 text-[11px] sm:text-xs font-semibold rounded-xl flex items-center justify-center gap-1.5 transition ${
             activeTab === 'cycle'
-              ? `bg-white dark:bg-midnight-800 ${currentTheme.activeText} shadow-sm`
+              ? `bg-white dark:bg-midnight-800 ${currentTheme.activeText} shadow-sm font-bold`
               : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'
           }`}
         >
-          <Droplets className="w-3.5 h-3.5" />
-          <span>Cycle & Ovulation</span>
+          <Droplets className="w-3.5 h-3.5 shrink-0" />
+          <span className="truncate">
+            <span className="sm:hidden">Cycle & Care</span>
+            <span className="hidden sm:inline">Cycle & Ovulation</span>
+          </span>
         </button>
       </div>
 
@@ -341,15 +347,15 @@ export const NotesView = () => {
             return (
               <div
                 key={note.id}
-                className={`rounded-3xl p-5 border shadow-sm transition hover:shadow-md relative flex flex-col justify-between ${colorClass}`}
+                className={`rounded-3xl p-4 sm:p-5 border shadow-sm transition hover:shadow-md relative flex flex-col justify-between ${colorClass}`}
               >
                 <div>
                   <div className="flex items-start justify-between gap-2 mb-2">
-                    <h4 className="font-bold text-sm truncate">{note.title || 'Love Note'}</h4>
-                    <div className="flex items-center space-x-1 shrink-0">
+                    <h4 className="font-bold text-sm truncate flex-1 min-w-0 [overflow-wrap:anywhere]">{note.title || 'Love Note'}</h4>
+                    <div className="flex items-center space-x-0.5 sm:space-x-1 shrink-0">
                       <button
                         onClick={() => togglePin(note.id, note.is_pinned)}
-                        className={`p-1 rounded-full transition ${
+                        className={`p-1.5 rounded-full transition ${
                           note.is_pinned ? 'text-rose-600' : 'text-slate-400 hover:text-slate-600'
                         }`}
                         title={note.is_pinned ? 'Unpin' : 'Pin to top'}
@@ -358,14 +364,14 @@ export const NotesView = () => {
                       </button>
                       <button
                         onClick={() => startEdit(note)}
-                        className="p-1 rounded-full text-slate-400 hover:text-blue-600 transition"
+                        className="p-1.5 rounded-full text-slate-400 hover:text-blue-600 transition"
                         title="Edit note"
                       >
                         <Edit2 className="w-3.5 h-3.5" />
                       </button>
                       <button
                         onClick={() => handleDeleteNote(note.id)}
-                        className="p-1 rounded-full text-slate-400 hover:text-red-600 transition"
+                        className="p-1.5 rounded-full text-slate-400 hover:text-red-600 transition"
                         title="Delete note"
                       >
                         <Trash2 className="w-3.5 h-3.5" />
@@ -373,12 +379,12 @@ export const NotesView = () => {
                     </div>
                   </div>
 
-                  <p className="text-xs whitespace-pre-wrap leading-relaxed opacity-90">{note.content}</p>
+                  <p className="text-xs sm:text-sm whitespace-pre-wrap leading-relaxed opacity-90 break-words [overflow-wrap:anywhere]">{note.content}</p>
                 </div>
 
-                <div className="mt-4 pt-3 border-t border-black/5 dark:border-white/5 flex items-center justify-between text-[10px] opacity-70">
+                <div className="mt-4 pt-3 border-t border-black/5 dark:border-white/5 flex flex-wrap items-center justify-between gap-1 text-[10px] opacity-70">
                   <span>{new Date(note.updated_at).toLocaleDateString()}</span>
-                  <span>{note.author_id === user?.id ? 'Written by You' : `From ${partner?.display_name || 'Love'}`}</span>
+                  <span className="truncate max-w-[170px]">{note.author_id === user?.id ? 'Written by You' : `From ${partner?.display_name || 'Love'}`}</span>
                 </div>
               </div>
             )

@@ -197,9 +197,9 @@ export const BirthdayCalculator = () => {
   return (
     <div className="space-y-4 animate-fade-in">
       {/* Top Banner */}
-      <div className={`glass rounded-3xl p-5 border ${currentTheme.border} flex items-center justify-between`}>
-        <div className="flex items-center space-x-3">
-          <div className={`w-10 h-10 rounded-2xl bg-gradient-to-tr ${currentTheme.primary} text-white flex items-center justify-center shadow-md ${currentTheme.shadow}`}>
+      <div className={`glass rounded-3xl p-4 sm:p-5 border ${currentTheme.border} flex flex-col sm:flex-row sm:items-center justify-between gap-3`}>
+        <div className="flex items-start sm:items-center space-x-3">
+          <div className={`w-10 h-10 rounded-2xl bg-gradient-to-tr ${currentTheme.primary} text-white flex items-center justify-center shadow-md ${currentTheme.shadow} shrink-0`}>
             <Cake className="w-5 h-5" />
           </div>
           <div>
@@ -214,7 +214,7 @@ export const BirthdayCalculator = () => {
 
         <button
           onClick={() => setIsEditing((prev) => !prev)}
-          className={`py-1.5 px-3 rounded-full ${currentTheme.softBg} ${currentTheme.activeText} ${currentTheme.softHover} text-xs font-semibold flex items-center gap-1.5 transition active:scale-95`}
+          className={`self-start sm:self-auto py-1.5 px-3 rounded-full ${currentTheme.softBg} ${currentTheme.activeText} ${currentTheme.softHover} text-xs font-semibold flex items-center gap-1.5 transition active:scale-95 shrink-0`}
         >
           <Edit2 className="w-3.5 h-3.5" />
           <span>{isEditing ? 'Cancel' : 'Set Birthdays'}</span>
@@ -317,10 +317,10 @@ export const BirthdayCalculator = () => {
               {/* Current Exact Age */}
               <div className="p-3 rounded-2xl bg-blue-50/60 dark:bg-blue-950/30 border border-blue-100 dark:border-blue-900/30">
                 <span className="text-[10px] font-semibold text-slate-400 block mb-0.5">Current Age</span>
-                <div className="text-lg font-bold text-slate-900 dark:text-white">
-                  {guyAge.years} <span className="text-xs font-normal text-slate-500">years,</span> {guyAge.months}{' '}
-                  <span className="text-xs font-normal text-slate-500">months,</span> {guyAge.days}{' '}
-                  <span className="text-xs font-normal text-slate-500">days</span>
+                <div className="text-base sm:text-lg font-bold text-slate-900 dark:text-white flex flex-wrap items-baseline gap-x-1.5 gap-y-0.5">
+                  <span>{guyAge.years} <span className="text-xs font-normal text-slate-500">years,</span></span>
+                  <span>{guyAge.months} <span className="text-xs font-normal text-slate-500">months,</span></span>
+                  <span>{guyAge.days} <span className="text-xs font-normal text-slate-500">days</span></span>
                 </div>
                 <span className="text-[10px] text-slate-400 mt-1 block">
                   🌟 {guyAge.totalDays.toLocaleString()} total days lived on Earth
@@ -396,10 +396,10 @@ export const BirthdayCalculator = () => {
               {/* Current Exact Age */}
               <div className={`p-3 rounded-2xl ${currentTheme.softBg} border ${currentTheme.borderLight}`}>
                 <span className="text-[10px] font-semibold text-slate-400 block mb-0.5">Current Age</span>
-                <div className="text-lg font-bold text-slate-900 dark:text-white">
-                  {girlAge.years} <span className="text-xs font-normal text-slate-500">years,</span> {girlAge.months}{' '}
-                  <span className="text-xs font-normal text-slate-500">months,</span> {girlAge.days}{' '}
-                  <span className="text-xs font-normal text-slate-500">days</span>
+                <div className="text-base sm:text-lg font-bold text-slate-900 dark:text-white flex flex-wrap items-baseline gap-x-1.5 gap-y-0.5">
+                  <span>{girlAge.years} <span className="text-xs font-normal text-slate-500">years,</span></span>
+                  <span>{girlAge.months} <span className="text-xs font-normal text-slate-500">months,</span></span>
+                  <span>{girlAge.days} <span className="text-xs font-normal text-slate-500">days</span></span>
                 </div>
                 <span className="text-[10px] text-slate-400 mt-1 block">
                   🌸 {girlAge.totalDays.toLocaleString()} total days of bringing joy to the world

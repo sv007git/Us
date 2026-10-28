@@ -38,18 +38,28 @@ export const SettingsView = () => {
   const { isDarkMode, toggleDarkMode, palette, setPalette, THEME_PALETTES, currentTheme } = useTheme()
 
   const handleSelectPalette = (key) => {
+    const now = Date.now()
+    if (typeof localStorage !== 'undefined') {
+      localStorage.setItem('just_you_me_palette', key)
+      localStorage.setItem('just_you_me_palette_updated_at', String(now))
+    }
     setPalette(key)
     if (coupleSpace) {
       updateCoupleSpace({
         theme_preference: key,
-        metadata: { ...(coupleSpace.metadata || {}), palette: key, darkMode: isDarkMode },
+        metadata: {
+          ...(coupleSpace.metadata || {}),
+          palette: key,
+          palette_updated_at: now,
+          darkMode: isDarkMode,
+        },
       }).catch((e) => console.warn('Could not persist theme to couple space:', e))
 
       if (presenceChannel) {
         presenceChannel.send({
           type: 'broadcast',
           event: 'couple-theme-updated',
-          payload: { palette: key, isDarkMode },
+          payload: { palette: key, isDarkMode, updatedAt: now },
         })
       }
     }
@@ -57,17 +67,23 @@ export const SettingsView = () => {
 
   const handleToggleDark = () => {
     const nextDark = !isDarkMode
+    const now = Date.now()
     toggleDarkMode()
     if (coupleSpace) {
       updateCoupleSpace({
-        metadata: { ...(coupleSpace.metadata || {}), palette, darkMode: nextDark },
+        metadata: {
+          ...(coupleSpace.metadata || {}),
+          palette,
+          palette_updated_at: now,
+          darkMode: nextDark,
+        },
       }).catch((e) => console.warn('Could not persist dark mode to couple space:', e))
 
       if (presenceChannel) {
         presenceChannel.send({
           type: 'broadcast',
           event: 'couple-theme-updated',
-          payload: { palette, isDarkMode: nextDark },
+          payload: { palette, isDarkMode: nextDark, updatedAt: now },
         })
       }
     }

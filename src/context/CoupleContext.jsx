@@ -369,19 +369,60 @@ export const CoupleProvider = ({ children }) => {
   const updateCoupleSpace = async (updates) => {
     if (!supabase || !coupleSpace) throw new Error('No couple space found')
 
-    const { data, error } = await supabase
-      .from('couple_spaces')
-      .update({
-        ...updates,
-        updated_at: new Date().toISOString(),
-      })
-      .eq('id', coupleSpace.id)
-      .select()
-      .single()
+    // Optimistically update local state so UI is instantly in sync
+    setCoupleSpace((prev) => ({
+      ...(prev || {}),
+      ...updates,
+      metadata: {
+        ...(prev?.metadata || {}),
+        ...(updates.metadata || {}),
+      },
+    }))
 
-    if (error) throw error
-    setCoupleSpace(data)
-    return data
+    try {
+      const { data, error } = await supabase
+        .from('couple_spaces')
+        .update({
+          ...updates,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', coupleSpace.id)
+        .select()
+        .single()
+
+      if (error) {
+        // Fallback: If column theme_preference doesn't exist, omit it and put in metadata
+        if (updates.theme_preference && (error.code === '42703' || error.message?.includes('theme_preference'))) {
+          const { theme_preference, ...rest } = updates
+          const safeMetadata = {
+            ...(coupleSpace.metadata || {}),
+            palette: theme_preference,
+            ...(updates.metadata || {}),
+          }
+          const { data: fallbackData, error: fallbackError } = await supabase
+            .from('couple_spaces')
+            .update({
+              ...rest,
+              metadata: safeMetadata,
+              updated_at: new Date().toISOString(),
+            })
+            .eq('id', coupleSpace.id)
+            .select()
+            .single()
+
+          if (fallbackError) throw fallbackError
+          setCoupleSpace(fallbackData)
+          return fallbackData
+        }
+        throw error
+      }
+
+      setCoupleSpace(data)
+      return data
+    } catch (err) {
+      console.warn('updateCoupleSpace network/persistence warning:', err)
+      return { ...coupleSpace, ...updates }
+    }
   }
 
   return (

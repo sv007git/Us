@@ -24,7 +24,7 @@ import {
 
 const AppContent = () => {
   const { user, loading: authLoading } = useAuth()
-  const { isPaired, partner, coupleSpace, loading: coupleLoading } = useCouple()
+  const { isPaired, partner, coupleSpace, updateCoupleSpace, loading: coupleLoading } = useCouple()
   const { currentTheme, palette, setPalette, isDarkMode, setIsDarkMode } = useTheme()
 
   const [currentTab, setCurrentTab] = useState(() => {
@@ -36,25 +36,42 @@ const AppContent = () => {
   const [notifPermission, setNotifPermission] = useState(() => getNotificationPermission())
   const [isPromptDismissed, setIsPromptDismissed] = useState(false)
 
-  // Synchronize theme universally across all devices from coupleSpace
+  // Synchronize theme universally across all devices without overwriting on reload
   useEffect(() => {
-    if (coupleSpace) {
-      const spaceTheme = coupleSpace.theme_preference || coupleSpace.metadata?.palette
-      if (spaceTheme && spaceTheme !== palette) {
-        setPalette(spaceTheme)
-      }
-      if (
-        coupleSpace.metadata?.darkMode !== undefined &&
-        coupleSpace.metadata.darkMode !== isDarkMode
-      ) {
-        setIsDarkMode(coupleSpace.metadata.darkMode)
-      }
+    if (!coupleSpace) return
+
+    const spacePalette = coupleSpace.theme_preference || coupleSpace.metadata?.palette
+    const spaceDark = coupleSpace.metadata?.darkMode
+    const spaceUpdatedAt = Number(coupleSpace.metadata?.palette_updated_at || 0)
+
+    const localPalette = typeof localStorage !== 'undefined' ? localStorage.getItem('just_you_me_palette') : null
+    const localUpdatedAt = Number(typeof localStorage !== 'undefined' ? (localStorage.getItem('just_you_me_palette_updated_at') || 0) : 0)
+
+    // If local was set more recently than the space in DB, sync local preference up to coupleSpace
+    if (localPalette && localUpdatedAt > spaceUpdatedAt && localPalette !== spacePalette) {
+      updateCoupleSpace({
+        theme_preference: localPalette,
+        metadata: {
+          ...(coupleSpace.metadata || {}),
+          palette: localPalette,
+          palette_updated_at: localUpdatedAt,
+          darkMode: isDarkMode,
+        },
+      }).catch((e) => console.warn('Could not sync local theme to couple space:', e))
+    } else if (spacePalette && spacePalette !== palette) {
+      // Space has a newer or explicitly set palette, sync to state
+      setPalette(spacePalette)
+    }
+
+    if (spaceDark !== undefined && spaceDark !== isDarkMode) {
+      setIsDarkMode(spaceDark)
     }
   }, [
     coupleSpace?.id,
     coupleSpace?.theme_preference,
     coupleSpace?.metadata?.palette,
     coupleSpace?.metadata?.darkMode,
+    coupleSpace?.metadata?.palette_updated_at,
   ])
 
   // Sync tab state to localStorage

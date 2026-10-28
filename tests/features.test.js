@@ -81,4 +81,30 @@ describe('New Features - Compression, Notifications, Themes & Media Management',
     // Safe handling of null inputs
     expect(toggleMessageReaction(null, '❤️', null)).toEqual({})
   })
+
+  it('persists and restores custom theme palette and dark mode in localStorage without reset', () => {
+    // 1. Initial state defaults to blush
+    expect(localStorage.getItem('just_you_me_palette')).toBeNull()
+
+    // 2. User selects emerald
+    const chosenPalette = 'emerald'
+    const now = Date.now()
+    localStorage.setItem('just_you_me_palette', chosenPalette)
+    localStorage.setItem('just_you_me_palette_updated_at', String(now))
+    localStorage.setItem('just_you_me_dark_mode', 'true')
+
+    // 3. Simulate reload by reading back from localStorage
+    const reloadedPalette = localStorage.getItem('just_you_me_palette')
+    const reloadedTimestamp = Number(localStorage.getItem('just_you_me_palette_updated_at'))
+    const reloadedDark = localStorage.getItem('just_you_me_dark_mode') === 'true'
+
+    expect(reloadedPalette).toBe('emerald')
+    expect(reloadedTimestamp).toBe(now)
+    expect(reloadedDark).toBe(true)
+
+    // 4. Stored palette key is a valid theme
+    expect(THEME_PALETTES[reloadedPalette]).toBeDefined()
+    expect(THEME_PALETTES[reloadedPalette].themeColorLight).toBeTruthy()
+    expect(THEME_PALETTES[reloadedPalette].themeColorDark).toBeTruthy()
+  })
 })

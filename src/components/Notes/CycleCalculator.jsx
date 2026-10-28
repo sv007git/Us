@@ -196,14 +196,14 @@ export const CycleCalculator = () => {
   return (
     <div className="space-y-4 animate-fade-in">
       {/* Top Header Card */}
-      <div className={`glass rounded-3xl p-5 border ${currentTheme.border} flex items-center justify-between`}>
-        <div className="flex items-center space-x-3">
-          <div className={`w-10 h-10 rounded-2xl bg-gradient-to-tr ${currentTheme.primary} text-white flex items-center justify-center shadow-md ${currentTheme.shadow}`}>
+      <div className={`glass rounded-3xl p-4 sm:p-5 border ${currentTheme.border} flex flex-col sm:flex-row sm:items-center justify-between gap-3`}>
+        <div className="flex items-start sm:items-center space-x-3">
+          <div className={`w-10 h-10 rounded-2xl bg-gradient-to-tr ${currentTheme.primary} text-white flex items-center justify-center shadow-md ${currentTheme.shadow} shrink-0`}>
             <Droplets className="w-5 h-5 fill-current text-white" />
           </div>
           <div>
             <h3 className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-1.5">
-              Her Cycle, Ovulation & Wellness Hub 🌸
+              Her Cycle, Ovulation & Wellness 🌸
             </h3>
             <p className="text-xs text-slate-500 dark:text-slate-400">
               Synced menstrual phases, fertility window, and sweet pampering tips for him.
@@ -211,7 +211,7 @@ export const CycleCalculator = () => {
           </div>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 self-start sm:self-auto shrink-0">
           <button
             onClick={() => setIsEditing((prev) => !prev)}
             className={`py-1.5 px-3 rounded-full ${currentTheme.softBg} ${currentTheme.activeText} ${currentTheme.softHover} text-xs font-semibold flex items-center gap-1.5 transition active:scale-95`}
@@ -455,33 +455,33 @@ export const CycleCalculator = () => {
           </div>
 
           {/* 4 Phases Reference Table */}
-          <div className={`glass rounded-3xl p-5 border ${currentTheme.border} space-y-3`}>
+          <div className={`glass rounded-3xl p-4 sm:p-5 border ${currentTheme.border} space-y-3`}>
             <h4 className="text-xs font-bold uppercase tracking-wider text-slate-400">
               The 4 Phases of Her Cycle
             </h4>
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-center text-xs">
-              <div className="p-3 rounded-2xl bg-rose-50/70 dark:bg-rose-950/30 border border-rose-200/60 dark:border-rose-900/30">
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 text-center text-xs">
+              <div className="p-2.5 sm:p-3 rounded-2xl bg-rose-50/70 dark:bg-rose-950/30 border border-rose-200/60 dark:border-rose-900/30">
                 <span className="font-bold text-rose-600 block mb-0.5">1. Menstrual</span>
-                <span className="text-[11px] text-slate-500">Days 1–{cycleData.periodDuration}</span>
-                <p className="text-[10px] text-slate-400 mt-1">Rest, cozy tea & hot pad</p>
+                <span className="text-[10px] sm:text-[11px] text-slate-500">Days 1–{cycleData.periodDuration}</span>
+                <p className="text-[10px] text-slate-400 mt-1 leading-snug">Rest, cozy tea & hot pad</p>
               </div>
 
-              <div className="p-3 rounded-2xl bg-emerald-50/70 dark:bg-emerald-950/30 border border-emerald-200/60 dark:border-emerald-900/30">
+              <div className="p-2.5 sm:p-3 rounded-2xl bg-emerald-50/70 dark:bg-emerald-950/30 border border-emerald-200/60 dark:border-emerald-900/30">
                 <span className="font-bold text-emerald-600 block mb-0.5">2. Follicular</span>
-                <span className="text-[11px] text-slate-500">Days {cycleData.periodDuration + 1}–{cycleData.fertileWindowStart - 1}</span>
-                <p className="text-[10px] text-slate-400 mt-1">Energy rising, fun dates</p>
+                <span className="text-[10px] sm:text-[11px] text-slate-500">Days {cycleData.periodDuration + 1}–{cycleData.fertileWindowStart - 1}</span>
+                <p className="text-[10px] text-slate-400 mt-1 leading-snug">Energy rising, fun dates</p>
               </div>
 
-              <div className="p-3 rounded-2xl bg-purple-50/70 dark:bg-purple-950/30 border border-purple-200/60 dark:border-purple-900/30">
+              <div className="p-2.5 sm:p-3 rounded-2xl bg-purple-50/70 dark:bg-purple-950/30 border border-purple-200/60 dark:border-purple-900/30">
                 <span className="font-bold text-purple-600 block mb-0.5">3. Ovulation</span>
-                <span className="text-[11px] text-slate-500">Days {cycleData.fertileWindowStart}–{cycleData.fertileWindowEnd}</span>
-                <p className="text-[10px] text-slate-400 mt-1">Glow, confidence & love</p>
+                <span className="text-[10px] sm:text-[11px] text-slate-500">Days {cycleData.fertileWindowStart}–{cycleData.fertileWindowEnd}</span>
+                <p className="text-[10px] text-slate-400 mt-1 leading-snug">Glow, confidence & love</p>
               </div>
 
-              <div className="p-3 rounded-2xl bg-amber-50/70 dark:bg-amber-950/30 border border-amber-200/60 dark:border-amber-900/30">
+              <div className="p-2.5 sm:p-3 rounded-2xl bg-amber-50/70 dark:bg-amber-950/30 border border-amber-200/60 dark:border-amber-900/30">
                 <span className="font-bold text-amber-600 block mb-0.5">4. Luteal</span>
-                <span className="text-[11px] text-slate-500">Days {cycleData.fertileWindowEnd + 1}–{cycleData.cycleLength}</span>
-                <p className="text-[10px] text-slate-400 mt-1">PMS comfort & snacks</p>
+                <span className="text-[10px] sm:text-[11px] text-slate-500">Days {cycleData.fertileWindowEnd + 1}–{cycleData.cycleLength}</span>
+                <p className="text-[10px] text-slate-400 mt-1 leading-snug">PMS comfort & snacks</p>
               </div>
             </div>
           </div>

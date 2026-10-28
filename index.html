@@ -13,6 +13,35 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Dancing+Script:wght@600;700&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <title>Just You & Me 💗</title>
+    <script>
+      (function() {
+        try {
+          var dark = localStorage.getItem('just_you_me_dark_mode');
+          var isDark = dark === 'true' || (dark === null && window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches);
+          if (isDark) {
+            document.documentElement.classList.add('dark');
+          } else {
+            document.documentElement.classList.remove('dark');
+          }
+          var palette = localStorage.getItem('just_you_me_palette') || 'blush';
+          document.documentElement.setAttribute('data-theme', palette);
+          
+          var colors = {
+            blush: { light: '#fff1f2', dark: '#0f172a' },
+            rose: { light: '#ffe4e6', dark: '#180a12' },
+            lavender: { light: '#f3e8ff', dark: '#130a1c' },
+            midnight: { light: '#eef2ff', dark: '#0b0f19' },
+            sunset: { light: '#ffedd5', dark: '#1c1008' },
+            ocean: { light: '#cffafe', dark: '#06141a' },
+            emerald: { light: '#d1fae5', dark: '#071710' }
+          };
+          var cur = colors[palette] || colors.blush;
+          var themeColor = isDark ? cur.dark : cur.light;
+          var meta = document.querySelector('meta[name="theme-color"]');
+          if (meta && themeColor) meta.setAttribute('content', themeColor);
+        } catch (e) {}
+      })();
+    </script>
   </head>
   <body class="bg-rose-50/50 dark:bg-midnight-950 text-slate-800 dark:text-slate-100 antialiased selection:bg-rose-200 selection:text-rose-900 transition-colors duration-300">
     <div id="root"></div>

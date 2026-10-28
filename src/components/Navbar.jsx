@@ -8,9 +8,31 @@ import confetti from 'canvas-confetti'
 
 export const Navbar = ({ currentTab, setCurrentTab }) => {
   const { profile } = useAuth()
-  const { coupleSpace, partner, isPartnerOnline, isPaired } = useCouple()
+  const { coupleSpace, partner, isPartnerOnline, isPaired, updateCoupleSpace, presenceChannel } = useCouple()
   const { startCall, callState } = useCall()
-  const { isDarkMode, toggleDarkMode, currentTheme } = useTheme()
+  const { isDarkMode, toggleDarkMode, palette, currentTheme } = useTheme()
+
+  const handleToggleDark = () => {
+    const nextDark = !isDarkMode
+    toggleDarkMode()
+    if (coupleSpace && updateCoupleSpace) {
+      updateCoupleSpace({
+        metadata: {
+          ...(coupleSpace.metadata || {}),
+          palette,
+          darkMode: nextDark,
+        },
+      }).catch((e) => console.warn('Could not persist dark mode to couple space:', e))
+
+      if (presenceChannel) {
+        presenceChannel.send({
+          type: 'broadcast',
+          event: 'couple-theme-updated',
+          payload: { palette, isDarkMode: nextDark },
+        })
+      }
+    }
+  }
 
   const triggerHeartBurst = () => {
     confetti({
@@ -100,7 +122,7 @@ export const Navbar = ({ currentTab, setCurrentTab }) => {
 
           {/* Dark / Light Toggle */}
           <button
-            onClick={toggleDarkMode}
+            onClick={handleToggleDark}
             className={`p-2 rounded-full text-slate-600 dark:text-slate-300 ${currentTheme.softHover} transition`}
             title={isDarkMode ? 'Light mode' : 'Dark mode'}
             aria-label="Toggle dark mode"
