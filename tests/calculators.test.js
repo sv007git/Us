@@ -1,4 +1,5 @@
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, beforeEach } from 'vitest'
+import { saveCoupleSystemData, loadCoupleSystemData } from '../src/lib/coupleDataHelper'
 
 describe('Birthday and Zodiac Calculations', () => {
   it('correctly calculates age in years, months, and days', () => {
@@ -71,5 +72,83 @@ describe('Menstrual Cycle & Ovulation Phase Calculations', () => {
     const currentDay = 20
     const daysUntilNextPeriod = cycleLength - currentDay + 1
     expect(daysUntilNextPeriod).toBe(9)
+  })
+
+  describe('Database & Cache Persistence for Birthdays and Cycle Data', () => {
+    beforeEach(() => {
+      localStorage.clear()
+    })
+
+    it('persists and loads birthday data across storage and metadata', async () => {
+      const mockBirthdays = {
+        guyName: 'Harish',
+        guyDob: '1998-08-15',
+        girlName: 'Priya',
+        girlDob: '2000-02-14',
+      }
+
+      let capturedUpdates = null
+      const mockUpdate = async (updates) => {
+        capturedUpdates = updates
+        return updates
+      }
+
+      // Save via helper
+      const saved = await saveCoupleSystemData({
+        key: 'birthdays',
+        data: mockBirthdays,
+        coupleSpaceId: null, // Avoid live network call in unit test
+        userId: null,
+        updateCoupleSpace: mockUpdate,
+      })
+      expect(saved).toBe(true)
+      expect(capturedUpdates?.metadata?.birthdays).toEqual(mockBirthdays)
+
+      // Verify localStorage was populated immediately
+      expect(localStorage.getItem('just_you_me_birthdays')).toBeTruthy()
+
+      // Load via helper from coupleSpace metadata
+      const loaded = await loadCoupleSystemData({
+        key: 'birthdays',
+        coupleSpace: { id: 'space-123', metadata: { birthdays: mockBirthdays } },
+      })
+      expect(loaded).toEqual(mockBirthdays)
+    })
+
+    it('persists and loads menstrual cycle data across storage and metadata', async () => {
+      const mockCycle = {
+        lastPeriodDate: '2026-10-10',
+        cycleLength: 28,
+        periodDuration: 5,
+        notes: 'Feeling good',
+      }
+
+      let capturedUpdates = null
+      const mockUpdate = async (updates) => {
+        capturedUpdates = updates
+        return updates
+      }
+
+      // Save via helper
+      const saved = await saveCoupleSystemData({
+        key: 'cycle',
+        data: mockCycle,
+        coupleSpaceId: null, // Avoid live network call in unit test
+        userId: null,
+        updateCoupleSpace: mockUpdate,
+      })
+      expect(saved).toBe(true)
+      expect(capturedUpdates?.metadata?.cycle).toEqual(mockCycle)
+
+      // Verify localStorage cache
+      expect(localStorage.getItem('just_you_me_cycle')).toBeTruthy()
+
+      // Load via helper from cache
+      const loaded = await loadCoupleSystemData({
+        key: 'cycle',
+        coupleSpace: null,
+      })
+      expect(loaded).toEqual(mockCycle)
+    })
   })
 })

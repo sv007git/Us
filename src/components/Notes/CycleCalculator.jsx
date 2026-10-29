@@ -17,7 +17,9 @@ import {
   Activity,
 } from 'lucide-react'
 import { useCouple } from '../../context/CoupleContext'
+import { useAuth } from '../../context/AuthContext'
 import { useTheme } from '../../context/ThemeContext'
+import { saveCoupleSystemData, loadCoupleSystemData } from '../../lib/coupleDataHelper'
 import confetti from 'canvas-confetti'
 
 // Helper to calculate cycle status
@@ -127,10 +129,11 @@ const calculateCyclePhases = ({ lastPeriodDateStr, cycleLength = 28, periodDurat
 }
 
 export const CycleCalculator = () => {
-  const { coupleSpace, partner, updateCoupleSpace } = useCouple()
+  const { coupleSpace, partner, updateCoupleSpace, presenceChannel } = useCouple()
+  const { user } = useAuth()
   const { currentTheme } = useTheme()
 
-  // Load from couple space metadata or defaults
+  // Load from couple space metadata, love_notes, or defaults
   const savedCycle = coupleSpace?.metadata?.cycle || {}
 
   const [lastPeriodDate, setLastPeriodDate] = useState(savedCycle.lastPeriodDate || '')
@@ -141,16 +144,27 @@ export const CycleCalculator = () => {
   const [isEditing, setIsEditing] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
 
-  // Sync if updated by partner
+  // Load and sync from database & cache
   useEffect(() => {
-    if (coupleSpace?.metadata?.cycle) {
-      const c = coupleSpace.metadata.cycle
-      if (c.lastPeriodDate) setLastPeriodDate(c.lastPeriodDate)
-      if (c.cycleLength) setCycleLength(c.cycleLength)
-      if (c.periodDuration) setPeriodDuration(c.periodDuration)
-      if (c.notes) setNotes(c.notes)
+    let isMounted = true
+    const initData = async () => {
+      const data = await loadCoupleSystemData({
+        key: 'cycle',
+        coupleSpace,
+        coupleSpaceId: coupleSpace?.id,
+      })
+      if (isMounted && data) {
+        if (data.lastPeriodDate) setLastPeriodDate(data.lastPeriodDate)
+        if (data.cycleLength) setCycleLength(data.cycleLength)
+        if (data.periodDuration) setPeriodDuration(data.periodDuration)
+        if (data.notes) setNotes(data.notes)
+      }
     }
-  }, [coupleSpace?.metadata?.cycle])
+    initData()
+    return () => {
+      isMounted = false
+    }
+  }, [coupleSpace?.id, coupleSpace?.metadata?.cycle])
 
   const handleSave = async (customLastPeriod = null) => {
     setIsSaving(true)
@@ -164,11 +178,13 @@ export const CycleCalculator = () => {
         lastUpdated: new Date().toISOString(),
       }
 
-      await updateCoupleSpace({
-        metadata: {
-          ...(coupleSpace?.metadata || {}),
-          cycle: updatedCycle,
-        },
+      await saveCoupleSystemData({
+        key: 'cycle',
+        data: updatedCycle,
+        coupleSpaceId: coupleSpace?.id,
+        userId: user?.id,
+        updateCoupleSpace,
+        presenceChannel,
       })
 
       confetti({ particleCount: 35, spread: 60, origin: { y: 0.6 } })

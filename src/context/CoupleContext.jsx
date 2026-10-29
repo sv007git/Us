@@ -177,6 +177,28 @@ export const CoupleProvider = ({ children }) => {
           }))
         }
       })
+      .on('broadcast', { event: 'couple-birthdays-updated' }, ({ payload }) => {
+        if (payload) {
+          setCoupleSpace((prev) => ({
+            ...(prev || {}),
+            metadata: {
+              ...(prev?.metadata || {}),
+              birthdays: payload,
+            },
+          }))
+        }
+      })
+      .on('broadcast', { event: 'couple-cycle-updated' }, ({ payload }) => {
+        if (payload) {
+          setCoupleSpace((prev) => ({
+            ...(prev || {}),
+            metadata: {
+              ...(prev?.metadata || {}),
+              cycle: payload,
+            },
+          }))
+        }
+      })
       .subscribe(async (status) => {
         if (status === 'SUBSCRIBED') {
           await channel.track({

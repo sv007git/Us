@@ -17,6 +17,7 @@ import {
 import { useCouple } from '../../context/CoupleContext'
 import { useAuth } from '../../context/AuthContext'
 import { useTheme } from '../../context/ThemeContext'
+import { saveCoupleSystemData, loadCoupleSystemData } from '../../lib/coupleDataHelper'
 import confetti from 'canvas-confetti'
 
 // Zodiac helper: returns sign, symbol, element, dates, and romantic vibe
@@ -107,11 +108,11 @@ const calculateNextBirthday = (dobStr) => {
 }
 
 export const BirthdayCalculator = () => {
-  const { coupleSpace, partner, updateCoupleSpace } = useCouple()
+  const { coupleSpace, partner, updateCoupleSpace, presenceChannel } = useCouple()
   const { user } = useAuth()
   const { currentTheme } = useTheme()
 
-  // Saved in couple space metadata or localStorage
+  // Saved in couple space metadata, love_notes, or localStorage
   const savedData = coupleSpace?.metadata?.birthdays || {}
 
   const [guyName, setGuyName] = useState(savedData.guyName || 'Him 👦')
@@ -122,16 +123,27 @@ export const BirthdayCalculator = () => {
   const [isEditing, setIsEditing] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
 
-  // Sync if couple space metadata updates
+  // Load and sync from database & cache
   useEffect(() => {
-    if (coupleSpace?.metadata?.birthdays) {
-      const bdays = coupleSpace.metadata.birthdays
-      if (bdays.guyDob) setGuyDob(bdays.guyDob)
-      if (bdays.girlDob) setGirlDob(bdays.girlDob)
-      if (bdays.guyName) setGuyName(bdays.guyName)
-      if (bdays.girlName) setGirlName(bdays.girlName)
+    let isMounted = true
+    const initData = async () => {
+      const data = await loadCoupleSystemData({
+        key: 'birthdays',
+        coupleSpace,
+        coupleSpaceId: coupleSpace?.id,
+      })
+      if (isMounted && data) {
+        if (data.guyDob) setGuyDob(data.guyDob)
+        if (data.girlDob) setGirlDob(data.girlDob)
+        if (data.guyName) setGuyName(data.guyName)
+        if (data.girlName) setGirlName(data.girlName)
+      }
     }
-  }, [coupleSpace?.metadata?.birthdays])
+    initData()
+    return () => {
+      isMounted = false
+    }
+  }, [coupleSpace?.id, coupleSpace?.metadata?.birthdays])
 
   const handleSave = async (e) => {
     e?.preventDefault()
@@ -144,11 +156,13 @@ export const BirthdayCalculator = () => {
         girlDob,
       }
 
-      await updateCoupleSpace({
-        metadata: {
-          ...(coupleSpace?.metadata || {}),
-          birthdays: updatedBirthdays,
-        },
+      await saveCoupleSystemData({
+        key: 'birthdays',
+        data: updatedBirthdays,
+        coupleSpaceId: coupleSpace?.id,
+        userId: user?.id,
+        updateCoupleSpace,
+        presenceChannel,
       })
 
       confetti({ particleCount: 40, spread: 60, origin: { y: 0.6 } })

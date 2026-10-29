@@ -55,7 +55,8 @@ export const NotesView = () => {
         .order('updated_at', { ascending: false })
 
       if (error) throw error
-      setNotes(data || [])
+      // Filter out persistent system data records (birthdays, cycle) from the romantic notes list
+      setNotes((data || []).filter((n) => !n.title?.startsWith('__SYSTEM_')))
     } catch (err) {
       console.error('Error fetching love notes:', err)
     } finally {

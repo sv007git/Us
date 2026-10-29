@@ -269,13 +269,13 @@ export const MemoriesView = ({ currentTab = 'memories', onNavigate = null, onSho
   return (
     <div className="flex-1 max-w-4xl mx-auto w-full p-4 pb-20 space-y-4">
       {/* Top Header */}
-      <div className={`glass rounded-3xl p-5 flex items-center justify-between border ${currentTheme.border}`}>
-        <div className="flex items-center space-x-3">
-          <div className={`w-10 h-10 rounded-2xl bg-gradient-to-tr ${currentTheme.primary} text-white flex items-center justify-center shadow-md ${currentTheme.shadow}`}>
+      <div className={`glass rounded-3xl p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-3.5 border ${currentTheme.border}`}>
+        <div className="flex items-start sm:items-center space-x-3">
+          <div className={`w-10 h-10 rounded-2xl bg-gradient-to-tr ${currentTheme.primary} text-white flex items-center justify-center shadow-md ${currentTheme.shadow} shrink-0`}>
             <ImageIcon className="w-5 h-5" />
           </div>
-          <div>
-            <h2 className="text-lg font-bold text-slate-900 dark:text-white">Our Memories 📸</h2>
+          <div className="min-w-0">
+            <h2 className="text-base sm:text-lg font-bold text-slate-900 dark:text-white truncate">Our Memories 📸</h2>
             <p className="text-xs text-slate-500 dark:text-slate-400">
               Capturing our most precious moments together.
             </p>
@@ -289,7 +289,7 @@ export const MemoriesView = ({ currentTab = 'memories', onNavigate = null, onSho
             setPreviewUrl(null)
             setIsAddModalOpen(true)
           }}
-          className={`py-2 px-3.5 rounded-full ${currentTheme.buttonGrad} hover:opacity-95 text-white text-xs font-semibold shadow-md ${currentTheme.shadow} active:scale-95 transition flex items-center gap-1.5`}
+          className={`self-start sm:self-auto py-2 px-3.5 rounded-full ${currentTheme.buttonGrad} hover:opacity-95 text-white text-xs font-semibold shadow-md ${currentTheme.shadow} active:scale-95 transition flex items-center gap-1.5 shrink-0`}
         >
           <Plus className="w-4 h-4" />
           <span>Add Moment</span>
@@ -337,7 +337,7 @@ export const MemoriesView = ({ currentTab = 'memories', onNavigate = null, onSho
                 />
 
                 {/* Floating Actions on Thumbnail */}
-                <div className="absolute top-3 right-3 flex items-center gap-1.5">
+                <div className="absolute top-2.5 right-2.5 sm:top-3 sm:right-3 flex items-center gap-1.5 z-10">
                   {/* Delete / Unsend Button */}
                   <button
                     type="button"
@@ -345,7 +345,7 @@ export const MemoriesView = ({ currentTab = 'memories', onNavigate = null, onSho
                       e.stopPropagation()
                       setMemoryToDelete(m)
                     }}
-                    className="p-2 rounded-full bg-black/40 hover:bg-red-600 text-white/80 hover:text-white backdrop-blur-md transition shadow-sm"
+                    className="p-1.5 sm:p-2 rounded-full bg-black/50 hover:bg-red-600 text-white/90 hover:text-white backdrop-blur-md transition shadow-sm"
                     title="Delete moment"
                     aria-label="Delete moment"
                   >
@@ -359,10 +359,10 @@ export const MemoriesView = ({ currentTab = 'memories', onNavigate = null, onSho
                       e.stopPropagation()
                       toggleFavorite(m.id, m.is_favorite)
                     }}
-                    className={`p-2 rounded-full backdrop-blur-md transition shadow-sm ${
+                    className={`p-1.5 sm:p-2 rounded-full backdrop-blur-md transition shadow-sm ${
                       m.is_favorite
                         ? `${currentTheme.badge}`
-                        : 'bg-black/40 text-white/80 hover:text-white'
+                        : 'bg-black/50 text-white/90 hover:text-white'
                     }`}
                     title={m.is_favorite ? 'Favorited' : 'Favorite'}
                   >
@@ -372,15 +372,15 @@ export const MemoriesView = ({ currentTab = 'memories', onNavigate = null, onSho
               </div>
 
               {/* Memory Details */}
-              <div className="p-4 flex-1 flex flex-col justify-between">
+              <div className="p-3.5 sm:p-4 flex-1 flex flex-col justify-between">
                 <div>
                   <div className={`flex items-center gap-1.5 text-[11px] ${currentTheme.activeText} font-semibold mb-1`}>
-                    <Calendar className="w-3.5 h-3.5" />
+                    <Calendar className="w-3.5 h-3.5 shrink-0" />
                     <span>{format(new Date(m.memory_date), 'MMMM d, yyyy')}</span>
                   </div>
-                  <h4 className="font-bold text-sm text-slate-900 dark:text-slate-100">{m.title}</h4>
+                  <h4 className="font-bold text-sm text-slate-900 dark:text-slate-100 break-words [overflow-wrap:anywhere] leading-snug">{m.title}</h4>
                   {m.description && (
-                    <p className="text-xs text-slate-600 dark:text-slate-300 mt-1 line-clamp-2">
+                    <p className="text-xs text-slate-600 dark:text-slate-300 mt-1 line-clamp-2 leading-relaxed break-words [overflow-wrap:anywhere]">
                       {m.description}
                     </p>
                   )}
@@ -393,8 +393,8 @@ export const MemoriesView = ({ currentTab = 'memories', onNavigate = null, onSho
 
       {/* Add Memory Modal */}
       {isAddModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in">
-          <div className={`w-full max-w-md bg-white dark:bg-midnight-900 border ${currentTheme.border} rounded-3xl p-6 shadow-2xl relative`}>
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/60 backdrop-blur-sm animate-fade-in">
+          <div className={`w-full max-w-md max-h-[92vh] overflow-y-auto bg-white dark:bg-midnight-900 border ${currentTheme.border} rounded-3xl p-5 sm:p-6 shadow-2xl relative`}>
             <button
               onClick={() => setIsAddModalOpen(false)}
               className="absolute top-5 right-5 p-2 rounded-full text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
@@ -540,8 +540,8 @@ export const MemoriesView = ({ currentTab = 'memories', onNavigate = null, onSho
 
       {/* Delete / Unsend Confirmation Modal */}
       {memoryToDelete && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in">
-          <div className="w-full max-w-sm rounded-3xl bg-white dark:bg-midnight-900 border border-red-200 dark:border-red-900/60 p-6 shadow-2xl space-y-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/60 backdrop-blur-sm animate-fade-in">
+          <div className="w-full max-w-sm rounded-3xl bg-white dark:bg-midnight-900 border border-red-200 dark:border-red-900/60 p-5 sm:p-6 shadow-2xl space-y-4">
             <div className="w-12 h-12 rounded-2xl bg-red-100 dark:bg-red-950/60 text-red-600 dark:text-red-400 flex items-center justify-center mx-auto">
               <Trash2 className="w-6 h-6" />
             </div>
