@@ -28,12 +28,30 @@ const NOTE_COLORS = {
   amber: 'bg-amber-50 dark:bg-amber-950/40 border-amber-200 dark:border-amber-900/50 text-amber-950 dark:text-amber-100',
 }
 
-export const NotesView = () => {
+export const NotesView = ({
+  currentTab = 'notes',
+  onNavigate = null,
+  onShowToast = null,
+  initialSubTab = null,
+}) => {
   const { user } = useAuth()
   const { coupleSpace, partner } = useCouple()
   const { currentTheme } = useTheme()
 
-  const [activeTab, setActiveTab] = useState('notes') // 'notes', 'birthdays', 'cycle'
+  const [activeTab, setActiveTab] = useState(() => {
+    if (initialSubTab) return initialSubTab
+    if (typeof localStorage !== 'undefined') {
+      return localStorage.getItem('just_you_me_notes_subtab') || 'notes'
+    }
+    return 'notes'
+  })
+
+  // Persist active subtab
+  useEffect(() => {
+    if (typeof localStorage !== 'undefined' && activeTab) {
+      localStorage.setItem('just_you_me_notes_subtab', activeTab)
+    }
+  }, [activeTab])
   const [notes, setNotes] = useState([])
   const [loading, setLoading] = useState(true)
   const [isCreating, setIsCreating] = useState(false)
@@ -243,7 +261,9 @@ export const NotesView = () => {
 
       {/* Tab View Content */}
       {activeTab === 'birthdays' && <BirthdayCalculator />}
-      {activeTab === 'cycle' && <CycleCalculator />}
+      {activeTab === 'cycle' && (
+        <CycleCalculator onShowToast={onShowToast} onNavigate={onNavigate} />
+      )}
 
       {activeTab === 'notes' && (
         <>

@@ -6,7 +6,6 @@ import {
   Droplets,
   Moon,
   Sun,
-  Flame,
   Coffee,
   Smile,
   ShieldCheck,
@@ -15,125 +14,37 @@ import {
   Info,
   Clock,
   Activity,
+  Bell,
+  BellRing,
+  Volume2,
+  ChevronRight,
+  Sparkle,
+  AlertCircle,
+  HelpCircle,
 } from 'lucide-react'
 import { useCouple } from '../../context/CoupleContext'
 import { useAuth } from '../../context/AuthContext'
 import { useTheme } from '../../context/ThemeContext'
 import { saveCoupleSystemData, loadCoupleSystemData } from '../../lib/coupleDataHelper'
+import {
+  calculateCyclePhases,
+  formatHumanDate,
+  formatLocalDate,
+} from '../../lib/cycleCalculatorHelper'
+import {
+  checkAndTriggerMorningPhaseNotification,
+  isMorningPhaseAlertEnabled,
+  setMorningPhaseAlertEnabled,
+  isMorningTime,
+} from '../../lib/cycleNotificationHelper'
 import confetti from 'canvas-confetti'
 
-// Helper to calculate cycle status
-const calculateCyclePhases = ({ lastPeriodDateStr, cycleLength = 28, periodDuration = 5 }) => {
-  if (!lastPeriodDateStr) return null
-
-  const lastPeriod = new Date(lastPeriodDateStr)
-  if (isNaN(lastPeriod.getTime())) return null
-
-  const today = new Date()
-  today.setHours(0, 0, 0, 0)
-  lastPeriod.setHours(0, 0, 0, 0)
-
-  // Difference in calendar days
-  const diffTime = today.getTime() - lastPeriod.getTime()
-  const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24))
-
-  if (diffDays < 0) return null
-
-  // Day of current cycle (1-indexed)
-  const currentDay = (diffDays % cycleLength) + 1
-
-  // Ovulation day is typically 14 days before next period
-  const ovulationDay = Math.max(1, cycleLength - 14)
-  const fertileWindowStart = Math.max(1, ovulationDay - 4)
-  const fertileWindowEnd = Math.min(cycleLength, ovulationDay + 1)
-
-  // Determine current phase
-  let phase = {}
-  if (currentDay <= periodDuration) {
-    phase = {
-      id: 'menstrual',
-      name: 'Menstrual Phase 🩸',
-      shortName: 'Menstruation',
-      color: 'rose',
-      badgeClass: 'bg-rose-100 dark:bg-rose-950/60 text-rose-700 dark:text-rose-300 border-rose-300 dark:border-rose-800',
-      description: 'The uterine lining is shedding. Estrogen and progesterone are at baseline low levels. Physical energy may be lower and cramps can happen.',
-      energyLevel: 'Low (Rest & Rejuvenation)',
-      guyCareTip: 'Bring her a warm heating pad, hot herbal tea or hot cocoa, her favorite dark chocolate, and run a soothing warm bath. Give gentle lower back or foot rubs and keep today calm and quiet.',
-      icon: Droplets,
-    }
-  } else if (currentDay < fertileWindowStart) {
-    phase = {
-      id: 'follicular',
-      name: 'Follicular Phase 🌱',
-      shortName: 'Follicular',
-      color: 'emerald',
-      badgeClass: 'bg-emerald-100 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border-emerald-300 dark:border-emerald-800',
-      description: 'Estrogen is steadily rising as new follicles develop. Energy, mood, mental clarity, and curiosity are bouncing back to full glow.',
-      energyLevel: 'Rising & High (Creative & Social)',
-      guyCareTip: 'She is feeling energized and optimistic! Surprise her with a spontaneous date night, go on an outdoor walk together, try a new recipe, and brainstorm dream plans.',
-      icon: Sun,
-    }
-  } else if (currentDay >= fertileWindowStart && currentDay <= fertileWindowEnd) {
-    const isPeak = currentDay === ovulationDay
-    phase = {
-      id: 'ovulation',
-      name: isPeak ? 'Peak Ovulation Day ✨' : 'Fertile Ovulation Window 🌸',
-      shortName: 'Ovulation',
-      color: 'purple',
-      badgeClass: 'bg-purple-100 dark:bg-purple-950/60 text-purple-700 dark:text-purple-300 border-purple-300 dark:border-purple-800',
-      description: 'Luteinizing Hormone (LH) surge releases an egg. Estrogen peaks. Confidence, radiant skin glow, and natural romantic affection are at their absolute peak.',
-      energyLevel: 'Peak (Radiant & Confident)',
-      guyCareTip: 'She is feeling magnetic and deeply loving! Shower her with genuine compliments, dress up for a romantic candlelit dinner, write her a sweet love note, and hold her close.',
-      icon: Sparkles,
-    }
-  } else {
-    phase = {
-      id: 'luteal',
-      name: 'Luteal Phase (PMS Care) 🌙',
-      shortName: 'Luteal',
-      color: 'amber',
-      badgeClass: 'bg-amber-100 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300 border-amber-300 dark:border-amber-800',
-      description: 'Progesterone peaks and then dips. Metabolism increases. She may feel more emotionally tender, sensitive, or experience bloating/cravings.',
-      energyLevel: 'Winding Down (Cozy & Sensitive)',
-      guyCareTip: 'Her body is working extra hard right now. Be deeply patient, supportive, and understanding. Stock comfort snacks, take care of daily chores without asking, and give big warm hugs.',
-      icon: Moon,
-    }
-  }
-
-  // Next Period calculation
-  const daysUntilNextPeriod = cycleLength - currentDay + 1
-  const nextPeriodDate = new Date(today)
-  nextPeriodDate.setDate(today.getDate() + daysUntilNextPeriod)
-
-  // Next Ovulation date
-  let daysUntilOvulation = ovulationDay - currentDay
-  if (daysUntilOvulation < 0) {
-    daysUntilOvulation += cycleLength
-  }
-  const nextOvulationDate = new Date(today)
-  nextOvulationDate.setDate(today.getDate() + daysUntilOvulation)
-
-  return {
-    currentDay,
-    cycleLength,
-    periodDuration,
-    ovulationDay,
-    fertileWindowStart,
-    fertileWindowEnd,
-    phase,
-    daysUntilNextPeriod,
-    nextPeriodDate,
-    daysUntilOvulation,
-    nextOvulationDate,
-  }
-}
-
-export const CycleCalculator = () => {
+export const CycleCalculator = ({ onShowToast = null, onNavigate = null }) => {
   const { coupleSpace, partner, updateCoupleSpace, presenceChannel } = useCouple()
   const { user } = useAuth()
   const { currentTheme } = useTheme()
 
-  // Load from couple space metadata, love_notes, or defaults
+  // Load from couple space metadata or fallback
   const savedCycle = coupleSpace?.metadata?.cycle || {}
 
   const [lastPeriodDate, setLastPeriodDate] = useState(savedCycle.lastPeriodDate || '')
@@ -143,6 +54,9 @@ export const CycleCalculator = () => {
 
   const [isEditing, setIsEditing] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
+  const [selectedPhaseTab, setSelectedPhaseTab] = useState(null)
+  const [morningAlertEnabled, setMorningAlertEnabled] = useState(isMorningPhaseAlertEnabled())
+  const [testAlertSent, setTestAlertSent] = useState(false)
 
   // Load and sync from database & cache
   useEffect(() => {
@@ -165,6 +79,27 @@ export const CycleCalculator = () => {
       isMounted = false
     }
   }, [coupleSpace?.id, coupleSpace?.metadata?.cycle])
+
+  // Calculate current status and accurate cycle phases with exact calendar dates
+  const cycleData = calculateCyclePhases({
+    lastPeriodDateStr: lastPeriodDate,
+    cycleLength: Number(cycleLength),
+    periodDuration: Number(periodDuration),
+    currentDate: new Date(),
+  })
+
+  // Automatically check and trigger morning notification if it's morning (6 AM – 12 PM)
+  useEffect(() => {
+    if (cycleData && cycleData.phase && morningAlertEnabled) {
+      checkAndTriggerMorningPhaseNotification({
+        cycleData,
+        partnerName: partner?.display_name || 'Her',
+        force: false,
+        onShowToast,
+        onNavigate,
+      })
+    }
+  }, [cycleData?.phase?.id, cycleData?.currentDay, partner?.display_name, morningAlertEnabled])
 
   const handleSave = async (customLastPeriod = null) => {
     setIsSaving(true)
@@ -198,31 +133,50 @@ export const CycleCalculator = () => {
 
   // Quick action: Log period started today
   const handleLogPeriodToday = async () => {
-    const todayStr = new Date().toISOString().split('T')[0]
+    const todayStr = formatLocalDate(new Date())
     setLastPeriodDate(todayStr)
     await handleSave(todayStr)
   }
 
-  const cycleData = calculateCyclePhases({
-    lastPeriodDateStr: lastPeriodDate,
-    cycleLength: Number(cycleLength),
-    periodDuration: Number(periodDuration),
-  })
+  // Test / preview the morning notification
+  const handleTriggerMorningAlertPreview = () => {
+    if (!cycleData) return
+    const res = checkAndTriggerMorningPhaseNotification({
+      cycleData,
+      partnerName: partner?.display_name || 'Her',
+      force: true,
+      onShowToast,
+      onNavigate,
+    })
+    if (res) {
+      setTestAlertSent(true)
+      setTimeout(() => setTestAlertSent(false), 4000)
+    }
+  }
+
+  // Handle toggling morning alert preference
+  const handleToggleMorningAlert = (enabled) => {
+    setMorningAlertEnabled(enabled)
+    setMorningPhaseAlertEnabled(enabled)
+  }
+
+  // Phase to display in the "What to do" guide (either user-selected tab or active phase)
+  const displayPhase = selectedPhaseTab || cycleData?.phase
 
   return (
     <div className="space-y-4 animate-fade-in">
       {/* Top Header Card */}
-      <div className={`glass rounded-3xl p-4 sm:p-5 border ${currentTheme.border} flex flex-col sm:flex-row sm:items-center justify-between gap-3`}>
+      <div className={`glass rounded-3xl p-4 sm:p-5 border ${currentTheme.border} flex flex-col sm:flex-row sm:items-center justify-between gap-3.5`}>
         <div className="flex items-start sm:items-center space-x-3">
           <div className={`w-10 h-10 rounded-2xl bg-gradient-to-tr ${currentTheme.primary} text-white flex items-center justify-center shadow-md ${currentTheme.shadow} shrink-0`}>
             <Droplets className="w-5 h-5 fill-current text-white" />
           </div>
-          <div>
-            <h3 className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-1.5">
+          <div className="min-w-0">
+            <h3 className="text-base sm:text-lg font-bold text-slate-900 dark:text-white flex items-center gap-1.5 truncate">
               Her Cycle, Ovulation & Wellness 🌸
             </h3>
             <p className="text-xs text-slate-500 dark:text-slate-400">
-              Synced menstrual phases, fertility window, and sweet pampering tips for him.
+              Exact phase calendar dates, accurate next period prediction, and thoughtful pampering tips.
             </p>
           </div>
         </div>
@@ -230,7 +184,7 @@ export const CycleCalculator = () => {
         <div className="flex items-center gap-2 self-start sm:self-auto shrink-0">
           <button
             onClick={() => setIsEditing((prev) => !prev)}
-            className={`py-1.5 px-3 rounded-full ${currentTheme.softBg} ${currentTheme.activeText} ${currentTheme.softHover} text-xs font-semibold flex items-center gap-1.5 transition active:scale-95`}
+            className={`py-1.5 px-3.5 rounded-full ${currentTheme.softBg} ${currentTheme.activeText} ${currentTheme.softHover} text-xs font-semibold flex items-center gap-1.5 transition active:scale-95`}
           >
             <Edit2 className="w-3.5 h-3.5" />
             <span>{isEditing ? 'Cancel' : 'Edit Cycle'}</span>
@@ -289,7 +243,7 @@ export const CycleCalculator = () => {
                 onChange={(e) => setCycleLength(e.target.value)}
                 className="w-full accent-current"
               />
-              <span className="text-[10px] text-slate-400 block text-right">Avg: 28 days</span>
+              <span className="text-[10px] text-slate-400 block text-right">Avg: 28 days (Normal 21–38)</span>
             </div>
 
             {/* Period duration */}
@@ -306,7 +260,7 @@ export const CycleCalculator = () => {
                 onChange={(e) => setPeriodDuration(e.target.value)}
                 className="w-full accent-current"
               />
-              <span className="text-[10px] text-slate-400 block text-right">Avg: 5 days</span>
+              <span className="text-[10px] text-slate-400 block text-right">Avg: 5 days (Normal 3–8)</span>
             </div>
           </div>
 
@@ -332,22 +286,47 @@ export const CycleCalculator = () => {
       {/* Main Cycle Status View */}
       {cycleData ? (
         <div className="space-y-4">
-          {/* Hero Phase Card */}
-          <div className={`glass rounded-3xl p-6 border ${currentTheme.border} relative overflow-hidden space-y-4 shadow-sm`}>
-            <div className="flex flex-wrap items-center justify-between gap-2">
-              <div className="flex items-center gap-2">
-                <span className={`px-3 py-1 rounded-full text-xs font-bold border ${cycleData.phase.badgeClass}`}>
+          {/* Projected Cycle Notice (If > 1 cycle has passed without update) */}
+          {cycleData.isProjectedCycle && (
+            <div className="p-3 sm:p-3.5 rounded-2xl bg-amber-500/10 border border-amber-500/30 flex items-start sm:items-center justify-between gap-3 text-xs text-amber-800 dark:text-amber-200">
+              <div className="flex items-start gap-2">
+                <Info className="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5 sm:mt-0" />
+                <span>
+                  Showing projected <strong>Cycle #{cycleData.projectedCycleIndex}</strong>. If her period started on a different day, tap to sync:
+                </span>
+              </div>
+              <button
+                type="button"
+                onClick={handleLogPeriodToday}
+                className="py-1 px-2.5 rounded-full bg-amber-600 hover:bg-amber-700 text-white font-semibold text-[11px] shrink-0 active:scale-95 transition"
+              >
+                Period Started Today
+              </button>
+            </div>
+          )}
+
+          {/* Hero Active Phase Card */}
+          <div className={`glass rounded-3xl p-5 sm:p-6 border ${currentTheme.border} relative overflow-hidden space-y-4 shadow-sm`}>
+            {/* Top row: Phase Badge & Quick Action */}
+            <div className="flex flex-wrap items-center justify-between gap-2.5">
+              <div className="flex flex-wrap items-center gap-2">
+                <span className={`px-3 py-1 rounded-full text-xs font-bold border shadow-xs ${cycleData.phase.badgeClass}`}>
                   {cycleData.phase.name}
                 </span>
-                <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">
-                  Day {cycleData.currentDay} of {cycleData.cycleLength}
+                <span className="text-xs font-semibold text-slate-600 dark:text-slate-300">
+                  {cycleData.phase.daysText || `Day ${cycleData.currentDay} of ${cycleData.cycleLength}`}
                 </span>
+                {cycleData.phase.datesText && (
+                  <span className="text-xs px-2.5 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800/80 text-slate-600 dark:text-slate-300 font-medium border border-slate-200/60 dark:border-slate-700/60">
+                    📅 {cycleData.phase.datesText}
+                  </span>
+                )}
               </div>
 
               <button
                 type="button"
                 onClick={handleLogPeriodToday}
-                className="py-1 px-3 rounded-full bg-rose-100 dark:bg-rose-950/60 text-rose-600 dark:text-rose-300 hover:bg-rose-200 text-[11px] font-semibold transition"
+                className="py-1 px-3 rounded-full bg-rose-100 dark:bg-rose-950/60 text-rose-600 dark:text-rose-300 hover:bg-rose-200 text-[11px] font-semibold transition active:scale-95"
               >
                 🩸 Period Started Today
               </button>
@@ -355,16 +334,16 @@ export const CycleCalculator = () => {
 
             {/* Visual Cycle Progress Bar */}
             <div className="space-y-1.5">
-              <div className="w-full h-3 rounded-full bg-slate-100 dark:bg-slate-800 overflow-hidden flex">
+              <div className="w-full h-3.5 rounded-full bg-slate-100 dark:bg-slate-800 overflow-hidden flex shadow-inner">
                 {/* 1. Menstrual */}
                 <div
-                  className="bg-rose-400"
+                  className="bg-rose-400 relative group cursor-pointer"
                   style={{ width: `${(cycleData.periodDuration / cycleData.cycleLength) * 100}%` }}
-                  title="Menstrual Phase"
+                  title={`Menstrual: Days 1–${cycleData.periodDuration}`}
                 />
                 {/* 2. Follicular */}
                 <div
-                  className="bg-emerald-400"
+                  className="bg-emerald-400 relative group cursor-pointer"
                   style={{
                     width: `${((cycleData.fertileWindowStart - 1 - cycleData.periodDuration) / cycleData.cycleLength) * 100}%`,
                   }}
@@ -372,7 +351,7 @@ export const CycleCalculator = () => {
                 />
                 {/* 3. Ovulation & Fertile */}
                 <div
-                  className="bg-purple-400 relative"
+                  className="bg-purple-400 relative group cursor-pointer"
                   style={{
                     width: `${((cycleData.fertileWindowEnd - cycleData.fertileWindowStart + 1) / cycleData.cycleLength) * 100}%`,
                   }}
@@ -380,137 +359,256 @@ export const CycleCalculator = () => {
                 />
                 {/* 4. Luteal */}
                 <div
-                  className="bg-amber-400 flex-1"
+                  className="bg-amber-400 flex-1 relative group cursor-pointer"
                   title="Luteal Phase"
                 />
               </div>
 
-              {/* Day Marker */}
-              <div className="flex justify-between text-[10px] text-slate-400 px-0.5">
+              {/* Day Marker & Cycle Markers */}
+              <div className="flex justify-between text-[10px] text-slate-400 px-0.5 font-medium">
                 <span>Day 1 (Period)</span>
-                <span>Day {cycleData.ovulationDay} (Ovulation)</span>
+                <span>Day {cycleData.ovulationDay} (Peak Ovulation)</span>
                 <span>Day {cycleData.cycleLength} (Next Cycle)</span>
               </div>
             </div>
 
-            {/* Phase Description */}
-            <div className="p-3.5 rounded-2xl bg-white/60 dark:bg-slate-800/60 border border-slate-100 dark:border-slate-800/60 space-y-1">
+            {/* Phase Description & Hormone State */}
+            <div className="p-3.5 sm:p-4 rounded-2xl bg-white/70 dark:bg-slate-800/70 border border-slate-100 dark:border-slate-800 space-y-1.5">
               <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
-                Phase Overview & Hormones
+                Phase Overview & Hormonal State
               </span>
-              <p className="text-xs text-slate-700 dark:text-slate-300 leading-relaxed">
+              <p className="text-xs sm:text-sm text-slate-700 dark:text-slate-300 leading-relaxed">
                 {cycleData.phase.description}
               </p>
-              <div className="pt-1 flex items-center gap-1.5 text-[11px] text-slate-500 dark:text-slate-400">
-                <Activity className="w-3.5 h-3.5 text-rose-500" />
-                <span>Energy State: <strong>{cycleData.phase.energyLevel}</strong></span>
+              <div className="pt-1 flex flex-wrap items-center gap-3 text-[11px] text-slate-500 dark:text-slate-400">
+                <div className="flex items-center gap-1.5">
+                  <Activity className="w-3.5 h-3.5 text-rose-500 shrink-0" />
+                  <span>Energy: <strong className="text-slate-700 dark:text-slate-200">{cycleData.phase.energyLevel}</strong></span>
+                </div>
+                {cycleData.phase.datesText && (
+                  <div className="flex items-center gap-1.5">
+                    <Calendar className="w-3.5 h-3.5 text-purple-500 shrink-0" />
+                    <span>Dates: <strong className="text-slate-700 dark:text-slate-200">{cycleData.phase.datesText}</strong></span>
+                  </div>
+                )}
               </div>
-            </div>
-
-            {/* Guy's Special Care & Romance Guide */}
-            <div className={`p-4 rounded-2xl ${currentTheme.softBg} border ${currentTheme.border} space-y-1.5`}>
-              <div className={`flex items-center gap-1.5 text-xs font-bold ${currentTheme.activeText}`}>
-                <Heart className="w-4 h-4 fill-current animate-heartbeat" />
-                <span>How He Can Pamper & Care for Her Today</span>
-              </div>
-              <p className="text-xs text-slate-700 dark:text-slate-200 leading-relaxed font-medium">
-                {cycleData.phase.guyCareTip}
-              </p>
             </div>
           </div>
 
-          {/* Forecast Cards: Next Period & Next Ovulation */}
+          {/* Accurate Forecast Cards: Next Period & Next Ovulation */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
             {/* Next Period Card */}
-            <div className={`glass rounded-3xl p-4 border ${currentTheme.border} space-y-2`}>
+            <div className={`glass rounded-3xl p-4 sm:p-5 border ${currentTheme.border} space-y-2`}>
               <div className="flex items-center justify-between">
                 <span className={`text-[10px] font-bold uppercase tracking-wider ${currentTheme.activeText}`}>
                   Next Period Expected
                 </span>
                 <Clock className={`w-4 h-4 ${currentTheme.activeText}`} />
               </div>
-              <div className="text-xl font-bold text-slate-900 dark:text-white">
-                In {cycleData.daysUntilNextPeriod} {cycleData.daysUntilNextPeriod === 1 ? 'day' : 'days'}
+              <div className="text-xl sm:text-2xl font-bold text-slate-900 dark:text-white">
+                {cycleData.isOverdue
+                  ? `Overdue by ${cycleData.daysOverdue} ${cycleData.daysOverdue === 1 ? 'day' : 'days'} 🩸`
+                  : cycleData.daysUntilNextPeriod === 0
+                  ? 'Expected Today! 🩸'
+                  : cycleData.daysUntilNextPeriod === 1
+                  ? 'Tomorrow! 🩸'
+                  : `In ${cycleData.daysUntilNextPeriod} days`}
               </div>
               <p className="text-xs text-slate-500 dark:text-slate-400">
                 Estimated Date:{' '}
-                <strong className="text-slate-700 dark:text-slate-200">
-                  {cycleData.nextPeriodDate.toLocaleDateString(undefined, {
+                <strong className="text-slate-800 dark:text-slate-100 font-semibold">
+                  {formatHumanDate(cycleData.nextPeriodDate, {
+                    weekday: 'short',
                     month: 'short',
                     day: 'numeric',
-                    weekday: 'short',
+                    year: 'numeric',
                   })}
                 </strong>
               </p>
             </div>
 
             {/* Next Ovulation Card */}
-            <div className="glass rounded-3xl p-4 border border-purple-200/60 dark:border-purple-900/40 space-y-2">
+            <div className="glass rounded-3xl p-4 sm:p-5 border border-purple-200/60 dark:border-purple-900/40 space-y-2">
               <div className="flex items-center justify-between">
-                <span className="text-[10px] font-bold uppercase tracking-wider text-purple-500">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-purple-600 dark:text-purple-400">
                   Peak Ovulation & Fertility
                 </span>
-                <Sparkles className="w-4 h-4 text-purple-400" />
+                <Sparkles className="w-4 h-4 text-purple-500" />
               </div>
-              <div className="text-xl font-bold text-slate-900 dark:text-white">
+              <div className="text-xl sm:text-2xl font-bold text-slate-900 dark:text-white">
                 {cycleData.daysUntilOvulation === 0
                   ? 'Happening Today! ✨'
+                  : cycleData.daysUntilOvulation === 1
+                  ? 'Tomorrow! ✨'
                   : `In ${cycleData.daysUntilOvulation} days`}
               </div>
               <p className="text-xs text-slate-500 dark:text-slate-400">
                 Peak Day:{' '}
-                <strong className="text-slate-700 dark:text-slate-200">
-                  {cycleData.nextOvulationDate.toLocaleDateString(undefined, {
+                <strong className="text-slate-800 dark:text-slate-100 font-semibold">
+                  {formatHumanDate(cycleData.nextOvulationDate, {
+                    weekday: 'short',
                     month: 'short',
                     day: 'numeric',
-                    weekday: 'short',
+                    year: 'numeric',
                   })}
                 </strong>
               </p>
             </div>
           </div>
 
-          {/* 4 Phases Reference Table */}
-          <div className={`glass rounded-3xl p-4 sm:p-5 border ${currentTheme.border} space-y-3`}>
-            <h4 className="text-xs font-bold uppercase tracking-wider text-slate-400">
-              The 4 Phases of Her Cycle
-            </h4>
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 text-center text-xs">
-              <div className="p-2.5 sm:p-3 rounded-2xl bg-rose-50/70 dark:bg-rose-950/30 border border-rose-200/60 dark:border-rose-900/30">
-                <span className="font-bold text-rose-600 block mb-0.5">1. Menstrual</span>
-                <span className="text-[10px] sm:text-[11px] text-slate-500">Days 1–{cycleData.periodDuration}</span>
-                <p className="text-[10px] text-slate-400 mt-1 leading-snug">Rest, cozy tea & hot pad</p>
+          {/* The 4 Phases Breakdown With Exact Calendar Dates */}
+          <div className={`glass rounded-3xl p-4 sm:p-5 border ${currentTheme.border} space-y-3.5`}>
+            <div className="flex items-center justify-between">
+              <div>
+                <h4 className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                  The 4 Phases of Her Cycle (With Calendar Dates)
+                </h4>
+                <p className="text-[11px] text-slate-400 dark:text-slate-500 mt-0.5">
+                  Tap any phase to see its dates, hormone state, and pampering guide.
+                </p>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2.5 text-xs">
+              {(cycleData.allPhases || []).map((p) => {
+                const isSelected = displayPhase?.id === p.id
+                const isCurrent = cycleData.phase?.id === p.id
+
+                return (
+                  <button
+                    key={p.id}
+                    type="button"
+                    onClick={() => setSelectedPhaseTab(p)}
+                    className={`p-3 rounded-2xl text-left border transition active:scale-95 relative ${
+                      isSelected
+                        ? `ring-2 ${currentTheme.ring} bg-white dark:bg-slate-800 shadow-md ${p.badgeClass}`
+                        : 'bg-white/60 dark:bg-slate-800/50 border-slate-200/60 dark:border-slate-700/60 hover:bg-white dark:hover:bg-slate-800'
+                    }`}
+                  >
+                    {isCurrent && (
+                      <span className="absolute top-2.5 right-2.5 px-1.5 py-0.5 rounded-full text-[9px] font-extrabold uppercase tracking-wider bg-rose-500 text-white shadow-xs">
+                        Current
+                      </span>
+                    )}
+                    <span className="font-bold text-slate-900 dark:text-slate-100 block mb-0.5">
+                      {p.name}
+                    </span>
+                    <span className="text-[11px] font-semibold text-slate-500 dark:text-slate-400 block">
+                      {p.daysText}
+                    </span>
+                    <span className="text-[11px] font-bold text-slate-700 dark:text-slate-200 block mt-1">
+                      📅 {p.datesText}
+                    </span>
+                    <p className="text-[10px] text-slate-400 dark:text-slate-400 mt-1 leading-snug line-clamp-2">
+                      {p.quickTip || p.energyLevel}
+                    </p>
+                  </button>
+                )
+              })}
+            </div>
+          </div>
+
+          {/* "What To Do" Section (Comprehensive Care & Romance Guide) */}
+          {displayPhase && (
+            <div className={`glass rounded-3xl p-5 sm:p-6 border ${currentTheme.border} space-y-4 shadow-sm`}>
+              <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 dark:border-slate-800/80 pb-3">
+                <div className="flex items-center gap-2">
+                  <div className={`p-2 rounded-xl bg-gradient-to-tr ${currentTheme.primary} text-white shadow-sm`}>
+                    <Heart className="w-4 h-4 fill-current animate-heartbeat" />
+                  </div>
+                  <div>
+                    <h4 className="text-sm sm:text-base font-bold text-slate-900 dark:text-white flex items-center gap-1.5">
+                      What To Do: {displayPhase.name}
+                    </h4>
+                    <p className="text-xs text-slate-500 dark:text-slate-400">
+                      Dates: <strong>{displayPhase.datesText}</strong> • Energy: <strong>{displayPhase.energyLevel}</strong>
+                    </p>
+                  </div>
+                </div>
+
+                {selectedPhaseTab && selectedPhaseTab.id !== cycleData.phase?.id && (
+                  <button
+                    type="button"
+                    onClick={() => setSelectedPhaseTab(null)}
+                    className="text-xs font-semibold text-rose-500 hover:underline"
+                  >
+                    Back to Today's Phase
+                  </button>
+                )}
               </div>
 
-              <div className="p-2.5 sm:p-3 rounded-2xl bg-emerald-50/70 dark:bg-emerald-950/30 border border-emerald-200/60 dark:border-emerald-900/30">
-                <span className="font-bold text-emerald-600 block mb-0.5">2. Follicular</span>
-                <span className="text-[10px] sm:text-[11px] text-slate-500">Days {cycleData.periodDuration + 1}–{cycleData.fertileWindowStart - 1}</span>
-                <p className="text-[10px] text-slate-400 mt-1 leading-snug">Energy rising, fun dates</p>
+              {/* What To Do Actions Checklist */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                {(displayPhase.whatToDo || []).map((item, idx) => (
+                  <div
+                    key={idx}
+                    className="p-3.5 rounded-2xl bg-white/70 dark:bg-slate-800/70 border border-slate-100 dark:border-slate-800 flex items-start gap-3 shadow-2xs"
+                  >
+                    <span className="text-xl shrink-0 mt-0.5">{item.icon}</span>
+                    <div className="space-y-0.5">
+                      <h5 className="text-xs font-bold text-slate-900 dark:text-white">
+                        {item.title}
+                      </h5>
+                      <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed font-normal">
+                        {item.desc}
+                      </p>
+                    </div>
+                  </div>
+                ))}
               </div>
+            </div>
+          )}
 
-              <div className="p-2.5 sm:p-3 rounded-2xl bg-purple-50/70 dark:bg-purple-950/30 border border-purple-200/60 dark:border-purple-900/30">
-                <span className="font-bold text-purple-600 block mb-0.5">3. Ovulation</span>
-                <span className="text-[10px] sm:text-[11px] text-slate-500">Days {cycleData.fertileWindowStart}–{cycleData.fertileWindowEnd}</span>
-                <p className="text-[10px] text-slate-400 mt-1 leading-snug">Glow, confidence & love</p>
+          {/* Morning Phase Notification Section */}
+          <div className={`glass rounded-3xl p-4 sm:p-5 border ${currentTheme.border} flex flex-col sm:flex-row sm:items-center justify-between gap-3.5`}>
+            <div className="flex items-start sm:items-center space-x-3">
+              <div className={`w-9 h-9 rounded-2xl bg-amber-500/20 text-amber-600 dark:text-amber-400 flex items-center justify-center shrink-0`}>
+                <BellRing className="w-4 h-4" />
               </div>
+              <div>
+                <h4 className="text-xs sm:text-sm font-bold text-slate-900 dark:text-white flex items-center gap-1.5">
+                  🌅 Morning Phase Notification
+                </h4>
+                <p className="text-[11px] sm:text-xs text-slate-500 dark:text-slate-400">
+                  Sends an alert every morning (6 AM – 12 PM) informing you of her phase and daily care tip.
+                </p>
+              </div>
+            </div>
 
-              <div className="p-2.5 sm:p-3 rounded-2xl bg-amber-50/70 dark:bg-amber-950/30 border border-amber-200/60 dark:border-amber-900/30">
-                <span className="font-bold text-amber-600 block mb-0.5">4. Luteal</span>
-                <span className="text-[10px] sm:text-[11px] text-slate-500">Days {cycleData.fertileWindowEnd + 1}–{cycleData.cycleLength}</span>
-                <p className="text-[10px] text-slate-400 mt-1 leading-snug">PMS comfort & snacks</p>
-              </div>
+            <div className="flex items-center gap-2 self-start sm:self-auto shrink-0">
+              <button
+                type="button"
+                onClick={handleTriggerMorningAlertPreview}
+                className={`py-1.5 px-3 rounded-full ${currentTheme.softBg} ${currentTheme.activeText} ${currentTheme.softHover} text-xs font-semibold flex items-center gap-1.5 transition active:scale-95`}
+                title="Preview what the morning phase alert sounds and looks like"
+              >
+                <Volume2 className="w-3.5 h-3.5" />
+                <span>{testAlertSent ? 'Alert Sent! 🔔' : 'Preview Morning Alert'}</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => handleToggleMorningAlert(!morningAlertEnabled)}
+                className={`py-1.5 px-3 rounded-full text-xs font-semibold transition active:scale-95 ${
+                  morningAlertEnabled
+                    ? 'bg-emerald-500 text-white shadow-xs'
+                    : 'bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300'
+                }`}
+              >
+                {morningAlertEnabled ? 'Enabled' : 'Disabled'}
+              </button>
             </div>
           </div>
         </div>
       ) : (
         /* Empty State */
-        <div className={`glass rounded-3xl p-10 text-center text-slate-400 border ${currentTheme.border} space-y-3`}>
+        <div className={`glass rounded-3xl p-8 sm:p-10 text-center text-slate-400 border ${currentTheme.border} space-y-3`}>
           <Droplets className={`w-12 h-12 ${currentTheme.activeText} mx-auto stroke-1`} />
           <h4 className="text-base font-bold text-slate-800 dark:text-slate-200">
             No Period Date Logged Yet
           </h4>
           <p className="text-xs text-slate-500 dark:text-slate-400 max-w-sm mx-auto">
-            Enter the start date of her last period to automatically calculate her current phase, ovulation days, and personalized care recommendations!
+            Enter the start date of her last period to automatically calculate her exact phase dates, ovulation window, and daily morning pampering tips!
           </p>
           <div className="flex justify-center gap-2 pt-1">
             <button

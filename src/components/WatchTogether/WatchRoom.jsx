@@ -855,7 +855,7 @@ export const WatchRoom = () => {
   }
 
   return (
-    <div className="flex-1 max-w-4xl mx-auto w-full p-3 sm:p-4 pb-20 space-y-4 animate-fade-in">
+    <div className="flex-1 max-w-4xl mx-auto w-full p-4 pb-20 space-y-4 animate-fade-in">
       {/* Hidden file input for custom attachments */}
       <input
         ref={fileInputRef}
@@ -880,13 +880,13 @@ export const WatchRoom = () => {
       />
 
       {/* Header Banner with In-Movie Call Controls */}
-      <div className={`glass rounded-3xl p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 border ${currentTheme.border}`}>
-        <div className="flex items-center space-x-3">
-          <div className={`w-10 h-10 rounded-2xl ${currentTheme.buttonGrad} text-white flex items-center justify-center shadow-md ${currentTheme.shadow}`}>
+      <div className={`glass rounded-3xl p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-3.5 border ${currentTheme.border}`}>
+        <div className="flex items-start sm:items-center space-x-3">
+          <div className={`w-10 h-10 rounded-2xl bg-gradient-to-tr ${currentTheme.primary} text-white flex items-center justify-center shadow-md ${currentTheme.shadow} shrink-0`}>
             <Film className="w-5 h-5" />
           </div>
-          <div>
-            <h2 className="text-base sm:text-lg font-bold text-slate-900 dark:text-white flex items-center gap-1.5">
+          <div className="min-w-0">
+            <h2 className="text-base sm:text-lg font-bold text-slate-900 dark:text-white truncate flex items-center gap-1.5">
               Watch Together 🎬
             </h2>
             <p className="text-xs text-slate-500 dark:text-slate-400">
@@ -896,7 +896,7 @@ export const WatchRoom = () => {
         </div>
 
         {/* Live Audio / Video Call Controls in Watch Room */}
-        <div className="flex flex-wrap items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2 self-start sm:self-auto shrink-0">
           {callState === 'idle' && (
             <>
               <button

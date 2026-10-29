@@ -247,7 +247,7 @@ const AppContent = () => {
           <MemoriesView currentTab={currentTab} onNavigate={setCurrentTab} onShowToast={handleShowToast} />
         </div>
         <div className={`h-full w-full flex-col ${currentTab === 'notes' ? 'flex overflow-y-auto' : 'hidden'}`}>
-          <NotesView />
+          <NotesView currentTab={currentTab} onNavigate={setCurrentTab} onShowToast={handleShowToast} />
         </div>
         <div className={`h-full w-full flex-col ${currentTab === 'settings' ? 'flex overflow-y-auto' : 'hidden'}`}>
           <SettingsView />

@@ -30,6 +30,10 @@ import {
   isSoundEnabled,
   setSoundEnabled,
 } from '../../lib/notificationHelper'
+import {
+  isMorningPhaseAlertEnabled,
+  setMorningPhaseAlertEnabled,
+} from '../../lib/cycleNotificationHelper'
 import confetti from 'canvas-confetti'
 
 export const SettingsView = () => {
@@ -110,7 +114,14 @@ export const SettingsView = () => {
   // Notification states
   const [notifPermission, setNotifPermission] = useState(getNotificationPermission())
   const [soundEnabled, setSoundEnabledState] = useState(isSoundEnabled())
+  const [morningPhaseEnabled, setMorningPhaseEnabled] = useState(isMorningPhaseAlertEnabled())
   const [testNotifSent, setTestNotifSent] = useState(false)
+
+  const handleToggleMorningPhaseAlert = () => {
+    const next = !morningPhaseEnabled
+    setMorningPhaseAlertEnabled(next)
+    setMorningPhaseEnabled(next)
+  }
 
   const handleEnableNotifications = async () => {
     const res = await requestNotificationPermission()
@@ -461,6 +472,31 @@ export const SettingsView = () => {
               <Check className="w-3.5 h-3.5" /> Enabled
             </span>
           )}
+        </div>
+
+        {/* Morning Cycle Phase Alerts */}
+        <div className={`flex items-center justify-between py-2 border-b ${currentTheme.borderLight}`}>
+          <div>
+            <h4 className="text-xs font-semibold text-slate-800 dark:text-slate-200">
+              🌅 Morning Cycle Phase Alerts
+            </h4>
+            <p className="text-[11px] text-slate-400">
+              Daily morning briefing (6 AM – 12 PM) with her phase and partner care tips
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={handleToggleMorningPhaseAlert}
+            className={`w-12 h-6 rounded-full transition-colors relative p-0.5 ${
+              morningPhaseEnabled ? currentTheme.accent : 'bg-slate-300 dark:bg-slate-700'
+            }`}
+          >
+            <div
+              className={`w-5 h-5 rounded-full bg-white transition-transform ${
+                morningPhaseEnabled ? 'translate-x-6' : 'translate-x-0'
+              }`}
+            />
+          </button>
         </div>
 
         {/* Test Notification Button */}
