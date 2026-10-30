@@ -18,6 +18,9 @@ import {
   PhoneOff,
   Video,
   VideoOff,
+  Mic,
+  MicOff,
+  SwitchCamera,
   Maximize2,
   Minimize2,
   Monitor,
@@ -49,11 +52,14 @@ export const WatchRoom = ({ currentTab = 'watch' }) => {
     remoteStream,
     isMicMuted,
     isCamOff,
+    isSpeakerMuted,
     callDuration,
     startCall,
     endCall,
     toggleMic,
     toggleCam,
+    toggleSpeaker,
+    switchCam,
     minimizeCall,
     maximizeCall,
     isScreenSharing,
@@ -68,6 +74,7 @@ export const WatchRoom = ({ currentTab = 'watch' }) => {
   const [currentTime, setCurrentTime] = useState(0)
   const [duration, setDuration] = useState(0)
   const [isMuted, setIsMuted] = useState(false)
+  const [movieVolume, setMovieVolume] = useState(1.0)
   const [playbackRate, setPlaybackRate] = useState(1.0)
   const [partnerActionToast, setPartnerActionToast] = useState(null)
   const [videoError, setVideoError] = useState(null)
@@ -90,31 +97,31 @@ export const WatchRoom = ({ currentTab = 'watch' }) => {
   const localVideoRef = useRef(null)
   const remoteAudioRef = useRef(null)
 
-  // Dedicated audio playback for in-movie call dock (ensures partner is 100% audible)
+  // Dedicated audio playback for in-movie call dock (ensures partner is 100% audible unless speaker is muted)
   useEffect(() => {
     if (remoteAudioRef.current && remoteStream) {
       if (remoteAudioRef.current.srcObject !== remoteStream) {
         remoteAudioRef.current.srcObject = remoteStream
       }
-      remoteAudioRef.current.muted = false
+      remoteAudioRef.current.muted = isSpeakerMuted
       remoteAudioRef.current.volume = 1.0
       remoteAudioRef.current.play().catch((e) => {
         console.warn('In-movie call audio autoplay catch:', e)
       })
     }
-  }, [remoteStream, callState])
+  }, [remoteStream, callState, isSpeakerMuted])
 
-  // Attach remote stream to in-movie video PIP (UNMUTED so partner voice is clear)
+  // Attach remote stream to in-movie video PIP (respects isSpeakerMuted)
   useEffect(() => {
     if (remoteVideoRef.current && remoteStream) {
       if (remoteVideoRef.current.srcObject !== remoteStream) {
         remoteVideoRef.current.srcObject = remoteStream
       }
-      remoteVideoRef.current.muted = false
+      remoteVideoRef.current.muted = isSpeakerMuted
       remoteVideoRef.current.volume = 1.0
       remoteVideoRef.current.play().catch(() => {})
     }
-  }, [remoteStream, callState, isVideoCall])
+  }, [remoteStream, callState, isVideoCall, isSpeakerMuted])
 
   // Attach local stream to miniature preview (MUTED to prevent local echo)
   useEffect(() => {
@@ -302,6 +309,16 @@ export const WatchRoom = ({ currentTab = 'watch' }) => {
     }
   }
 
+  const handleMovieVolumeChange = (e) => {
+    const val = parseFloat(e.target.value)
+    setMovieVolume(val)
+    if (videoRef.current) {
+      videoRef.current.volume = val
+      videoRef.current.muted = val === 0
+      setIsMuted(val === 0)
+    }
+  }
+
   const handleLoadUrl = async (e) => {
     e.preventDefault()
     if (!inputUrl.trim()) return
@@ -485,22 +502,41 @@ export const WatchRoom = ({ currentTab = 'watch' }) => {
                 {formatCallDuration(callDuration)}
               </span>
               <div className="h-3 w-px bg-slate-700 mx-1" />
+              {/* Mic Toggle */}
               <button
                 onClick={toggleMic}
-                className={`p-1 rounded-full transition ${isMicMuted ? 'text-amber-400' : 'text-slate-300 hover:text-white'}`}
+                className={`p-1 rounded-full transition ${isMicMuted ? 'bg-amber-500 text-white' : 'text-slate-300 hover:text-white'}`}
                 title={isMicMuted ? 'Unmute Mic' : 'Mute Mic'}
               >
                 {isMicMuted ? <MicOff className="w-3.5 h-3.5" /> : <Mic className="w-3.5 h-3.5" />}
               </button>
-              {isVideoCall && (
+              {/* Cam Toggle */}
+              <button
+                onClick={toggleCam}
+                className={`p-1 rounded-full transition ${isCamOff ? 'bg-amber-500 text-white' : 'text-slate-300 hover:text-white'}`}
+                title={isCamOff ? 'Turn Cam On' : 'Turn Cam Off'}
+              >
+                {isCamOff ? <VideoOff className="w-3.5 h-3.5" /> : <Video className="w-3.5 h-3.5" />}
+              </button>
+              {/* Speaker / Partner Audio Toggle */}
+              <button
+                onClick={toggleSpeaker}
+                className={`p-1 rounded-full transition ${isSpeakerMuted ? 'bg-amber-500 text-white' : 'text-slate-300 hover:text-white'}`}
+                title={isSpeakerMuted ? 'Unmute Partner Audio' : 'Mute Partner Audio'}
+              >
+                {isSpeakerMuted ? <VolumeX className="w-3.5 h-3.5" /> : <Volume2 className="w-3.5 h-3.5" />}
+              </button>
+              {/* Camera Switch (front/back) on mobile */}
+              {(!isCamOff || isVideoCall) && (
                 <button
-                  onClick={toggleCam}
-                  className={`p-1 rounded-full transition ${isCamOff ? 'text-amber-400' : 'text-slate-300 hover:text-white'}`}
-                  title={isCamOff ? 'Turn Cam On' : 'Turn Cam Off'}
+                  onClick={switchCam}
+                  className="p-1 rounded-full text-slate-300 hover:text-white transition"
+                  title="Flip Camera (Front/Rear)"
                 >
-                  {isCamOff ? <VideoOff className="w-3.5 h-3.5" /> : <Video className="w-3.5 h-3.5" />}
+                  <SwitchCamera className="w-3.5 h-3.5" />
                 </button>
               )}
+              {/* Fullscreen Call */}
               <button
                 onClick={maximizeCall}
                 className="p-1 rounded-full text-slate-300 hover:text-white transition"
@@ -508,6 +544,7 @@ export const WatchRoom = ({ currentTab = 'watch' }) => {
               >
                 <Maximize2 className="w-3.5 h-3.5" />
               </button>
+              {/* End Call */}
               <button
                 onClick={endCall}
                 className="p-1 rounded-full text-red-400 hover:text-red-300 transition"
@@ -550,7 +587,7 @@ export const WatchRoom = ({ currentTab = 'watch' }) => {
 
         {/* IN-MOVIE FLOATING PARTNER OVERLAY (When Call is Active) */}
         {callState === 'connected' && isCallDocked && (
-          <div className={`absolute top-3 right-3 z-20 w-32 sm:w-44 aspect-[3/4] sm:aspect-video rounded-2xl overflow-hidden border-2 ${currentTheme.border} shadow-2xl bg-black/90 backdrop-blur-md animate-scale-up`}>
+          <div className={`absolute top-3 right-3 z-20 w-36 sm:w-52 aspect-[3/4] sm:aspect-video rounded-2xl overflow-hidden border-2 ${currentTheme.border} shadow-2xl bg-black/95 backdrop-blur-md animate-scale-up group/calloverlay`}>
             {/* Dedicated remote audio playback */}
             <audio ref={remoteAudioRef} autoPlay playsInline className="sr-only" aria-hidden="true" />
             {isVideoCall ? (
@@ -565,7 +602,7 @@ export const WatchRoom = ({ currentTab = 'watch' }) => {
                 <div className={`w-8 h-8 rounded-full ${currentTheme.buttonGrad} flex items-center justify-center mb-1 animate-pulse`}>
                   <Heart className="w-4 h-4 fill-current text-white animate-heartbeat" />
                 </div>
-                <span className={`text-[11px] font-bold ${currentTheme.activeText} truncate max-w-[100px]`}>
+                <span className={`text-[11px] font-bold ${currentTheme.activeText} truncate max-w-[110px]`}>
                   {partner?.display_name || 'My Love'}
                 </span>
                 <span className="text-[9px] text-emerald-400 font-mono">
@@ -592,21 +629,78 @@ export const WatchRoom = ({ currentTab = 'watch' }) => {
               </div>
             )}
 
-            {/* Overlay partner header and close/undock button */}
-            <div className="absolute top-1.5 left-1.5 z-10 flex items-center gap-1">
+            {/* Overlay partner header badge */}
+            <div className="absolute top-1.5 left-1.5 z-10 flex items-center gap-1 bg-black/60 backdrop-blur-sm px-1.5 py-0.5 rounded-full">
               <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
               <span className="text-[9px] font-bold text-white shadow-sm">
                 {partner?.display_name || 'Partner'}
               </span>
             </div>
-            <button
-              type="button"
-              onClick={() => setIsCallDocked(false)}
-              className="absolute bottom-1.5 right-1.5 z-10 p-1 rounded-full bg-black/60 text-white/80 hover:text-white transition"
-              title="Hide overlay"
-            >
-              <Minimize2 className="w-3 h-3" />
-            </button>
+
+            {/* Overlay Floating Touch Controls Bar: Audio & Video controls directly on overlay */}
+            <div className="absolute inset-x-0 bottom-0 p-1 bg-gradient-to-t from-black/95 via-black/80 to-transparent flex items-center justify-around z-20">
+              {/* Mic toggle */}
+              <button
+                type="button"
+                onClick={toggleMic}
+                className={`p-1 rounded-full transition ${isMicMuted ? 'bg-amber-500 text-white' : 'bg-white/20 hover:bg-white/30 text-white'}`}
+                title={isMicMuted ? 'Unmute Mic' : 'Mute Mic'}
+              >
+                {isMicMuted ? <MicOff className="w-3 h-3" /> : <Mic className="w-3 h-3" />}
+              </button>
+
+              {/* Cam toggle */}
+              <button
+                type="button"
+                onClick={toggleCam}
+                className={`p-1 rounded-full transition ${isCamOff ? 'bg-amber-500 text-white' : 'bg-white/20 hover:bg-white/30 text-white'}`}
+                title={isCamOff ? 'Turn Cam On' : 'Turn Cam Off'}
+              >
+                {isCamOff ? <VideoOff className="w-3 h-3" /> : <Video className="w-3 h-3" />}
+              </button>
+
+              {/* Speaker / Partner audio toggle */}
+              <button
+                type="button"
+                onClick={toggleSpeaker}
+                className={`p-1 rounded-full transition ${isSpeakerMuted ? 'bg-amber-500 text-white' : 'bg-white/20 hover:bg-white/30 text-white'}`}
+                title={isSpeakerMuted ? 'Unmute Partner Audio' : 'Mute Partner Audio'}
+              >
+                {isSpeakerMuted ? <VolumeX className="w-3 h-3" /> : <Volume2 className="w-3 h-3" />}
+              </button>
+
+              {/* Flip camera on mobile */}
+              {(!isCamOff || isVideoCall) && (
+                <button
+                  type="button"
+                  onClick={switchCam}
+                  className="p-1 rounded-full bg-white/20 hover:bg-white/30 text-white transition"
+                  title="Flip camera"
+                >
+                  <SwitchCamera className="w-3 h-3" />
+                </button>
+              )}
+
+              {/* Maximize call */}
+              <button
+                type="button"
+                onClick={maximizeCall}
+                className="p-1 rounded-full bg-white/20 hover:bg-white/30 text-white transition"
+                title="Fullscreen Call"
+              >
+                <Maximize2 className="w-3 h-3" />
+              </button>
+
+              {/* Hide overlay */}
+              <button
+                type="button"
+                onClick={() => setIsCallDocked(false)}
+                className="p-1 rounded-full bg-white/20 hover:bg-white/30 text-white/80 hover:text-white transition"
+                title="Hide overlay"
+              >
+                <Minimize2 className="w-3 h-3" />
+              </button>
+            </div>
           </div>
         )}
 
@@ -703,20 +797,34 @@ export const WatchRoom = ({ currentTab = 'watch' }) => {
                 <RotateCw className="w-4 h-4" />
               </button>
 
-              <button
-                onClick={() => {
-                  if (videoRef.current) {
-                    const nextMuted = !isMuted
-                    videoRef.current.muted = nextMuted
-                    setIsMuted(nextMuted)
-                    syncEngineRef.current?.broadcastAction(nextMuted ? 'mute' : 'unmute', { isMuted: nextMuted })
-                  }
-                }}
-                className="p-1.5 sm:p-2 rounded-full hover:bg-white/10 text-white/80 transition active:scale-95"
-                title={isMuted ? 'Unmute' : 'Mute'}
-              >
-                {isMuted ? <VolumeX className="w-4 h-4" /> : <Volume2 className="w-4 h-4" />}
-              </button>
+              {/* Movie Audio Controls: Mute/Unmute & Volume Level Slider */}
+              <div className="flex items-center gap-1 group/vol">
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (videoRef.current) {
+                      const nextMuted = !isMuted
+                      videoRef.current.muted = nextMuted
+                      setIsMuted(nextMuted)
+                      syncEngineRef.current?.broadcastAction(nextMuted ? 'mute' : 'unmute', { isMuted: nextMuted })
+                    }
+                  }}
+                  className="p-1.5 sm:p-2 rounded-full hover:bg-white/10 text-white/80 transition active:scale-95"
+                  title={isMuted ? 'Unmute movie sound' : 'Mute movie sound'}
+                >
+                  {isMuted || movieVolume === 0 ? <VolumeX className="w-4 h-4 text-rose-400" /> : <Volume2 className="w-4 h-4" />}
+                </button>
+                <input
+                  type="range"
+                  min="0"
+                  max="1"
+                  step="0.05"
+                  value={isMuted ? 0 : movieVolume}
+                  onChange={handleMovieVolumeChange}
+                  className="w-14 sm:w-20 h-1 bg-white/20 rounded-lg appearance-none cursor-pointer accent-current opacity-80 hover:opacity-100 transition"
+                  title={`Movie Volume: ${Math.round((isMuted ? 0 : movieVolume) * 100)}%`}
+                />
+              </div>
 
               <button
                 onClick={handleToggleFullscreen}

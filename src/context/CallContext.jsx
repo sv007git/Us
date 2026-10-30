@@ -18,6 +18,7 @@ export const CallProvider = ({ children }) => {
   const [remoteStream, setRemoteStream] = useState(null)
   const [isMicMuted, setIsMicMuted] = useState(false)
   const [isCamOff, setIsCamOff] = useState(false)
+  const [isSpeakerMuted, setIsSpeakerMuted] = useState(false)
   const [facingMode, setFacingMode] = useState('user')
   const [callDuration, setCallDuration] = useState(0)
   const [callError, setCallError] = useState(null)
@@ -36,7 +37,7 @@ export const CallProvider = ({ children }) => {
         if (audioEl.srcObject !== remoteStream) {
           audioEl.srcObject = remoteStream
         }
-        audioEl.muted = false
+        audioEl.muted = isSpeakerMuted
         audioEl.volume = 1.0
 
         const playAudio = () => {
@@ -223,11 +224,27 @@ export const CallProvider = ({ children }) => {
     setIsMicMuted(newState)
   }
 
-  const toggleCam = () => {
+  const toggleCam = async () => {
     if (!managerRef.current) return
     const newState = !isCamOff
-    managerRef.current.toggleCamera(!newState)
-    setIsCamOff(newState)
+    const active = await managerRef.current.toggleCamera(!newState)
+    setIsCamOff(!active)
+    if (active) {
+      setIsVideoCall(true)
+      if (managerRef.current.localStream) {
+        setLocalStream(new MediaStream(managerRef.current.localStream.getTracks()))
+      }
+    }
+  }
+
+  const toggleSpeaker = () => {
+    setIsSpeakerMuted((prev) => {
+      const next = !prev
+      if (globalAudioRef.current) {
+        globalAudioRef.current.muted = next
+      }
+      return next
+    })
   }
 
   const switchCam = async () => {
@@ -274,6 +291,7 @@ export const CallProvider = ({ children }) => {
         remoteStream,
         isMicMuted,
         isCamOff,
+        isSpeakerMuted,
         facingMode,
         callDuration,
         callError,
@@ -284,6 +302,7 @@ export const CallProvider = ({ children }) => {
         endCall,
         toggleMic,
         toggleCam,
+        toggleSpeaker,
         switchCam,
         isCallMinimized,
         setIsCallMinimized,

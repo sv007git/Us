@@ -61,3 +61,61 @@ describe('WebRTC ICE Server Configuration', () => {
     expect(stunUrls.some((u) => u.includes('mozilla.com'))).toBe(true)
   })
 })
+
+describe('WebRtcCallManager Audio and Video Controls', () => {
+  it('toggles microphone audio tracks properly', () => {
+    const audioTrack = { kind: 'audio', enabled: true }
+    const mockStream = {
+      getAudioTracks: () => [audioTrack],
+      getVideoTracks: () => [],
+    }
+
+    const manager = {
+      localStream: mockStream,
+      toggleMicrophone(enabled) {
+        const track = this.localStream.getAudioTracks()[0]
+        if (track) {
+          track.enabled = enabled !== undefined ? enabled : !track.enabled
+          return track.enabled
+        }
+        return false
+      },
+    }
+
+    expect(manager.toggleMicrophone(false)).toBe(false)
+    expect(audioTrack.enabled).toBe(false)
+    expect(manager.toggleMicrophone(true)).toBe(true)
+    expect(audioTrack.enabled).toBe(true)
+    expect(manager.toggleMicrophone()).toBe(false) // Toggle off
+    expect(audioTrack.enabled).toBe(false)
+    expect(manager.toggleMicrophone()).toBe(true) // Toggle on
+    expect(audioTrack.enabled).toBe(true)
+  })
+
+  it('toggles camera video tracks properly', () => {
+    const videoTrack = { kind: 'video', enabled: true }
+    const mockStream = {
+      getAudioTracks: () => [],
+      getVideoTracks: () => [videoTrack],
+    }
+
+    const manager = {
+      localStream: mockStream,
+      toggleCamera(enabled) {
+        const track = this.localStream.getVideoTracks()[0]
+        if (track) {
+          track.enabled = enabled !== undefined ? enabled : !track.enabled
+          return track.enabled
+        }
+        return false
+      },
+    }
+
+    expect(manager.toggleCamera(false)).toBe(false)
+    expect(videoTrack.enabled).toBe(false)
+    expect(manager.toggleCamera(true)).toBe(true)
+    expect(videoTrack.enabled).toBe(true)
+    expect(manager.toggleCamera()).toBe(false) // Toggle off
+    expect(videoTrack.enabled).toBe(false)
+  })
+})

@@ -479,16 +479,62 @@ export class WebRtcCallManager {
   }
 
   /**
-   * Toggles camera video on/off
+   * Enables camera on an audio-only stream dynamically
    */
-  toggleCamera(enabled) {
+  async enableCamera() {
     if (!this.localStream) return false
-    const videoTrack = this.localStream.getVideoTracks()[0]
-    if (videoTrack) {
-      videoTrack.enabled = enabled !== undefined ? enabled : !videoTrack.enabled
-      return videoTrack.enabled
+    try {
+      const newStream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: this.facingMode, width: { ideal: 1280 }, height: { ideal: 720 } },
+      })
+      const videoTrack = newStream.getVideoTracks()[0]
+      if (videoTrack) {
+        this.localStream.addTrack(videoTrack)
+        this.isVideoCall = true
+        if (this.peerConnection) {
+          const sender = this.peerConnection.getSenders().find((s) => s.track && s.track.kind === 'video')
+          if (sender) {
+            await sender.replaceTrack(videoTrack)
+          } else {
+            this.peerConnection.addTrack(videoTrack, this.localStream)
+            try {
+              const offer = await this.peerConnection.createOffer()
+              await this.peerConnection.setLocalDescription(offer)
+              this.signalingChannel?.send({
+                type: 'broadcast',
+                event: 'call-offer',
+                payload: {
+                  sdp: offer,
+                  isVideo: true,
+                  callerId: this.currentUserId,
+                  isIceRestart: true,
+                },
+              })
+            } catch (negErr) {
+              console.warn('Renegotiation for video track catch:', negErr)
+            }
+          }
+        }
+        return true
+      }
+      return false
+    } catch (err) {
+      console.warn('Could not enable camera:', err)
+      return false
     }
-    return false
+  }
+
+  /**
+   * Toggles camera video on/off (enables camera if previously audio-only)
+   */
+  async toggleCamera(enabled) {
+    if (!this.localStream) return false
+    let videoTrack = this.localStream.getVideoTracks()[0]
+    if (!videoTrack) {
+      return await this.enableCamera()
+    }
+    videoTrack.enabled = enabled !== undefined ? enabled : !videoTrack.enabled
+    return videoTrack.enabled
   }
 
   /**

@@ -29,6 +29,7 @@ export const CallModal = ({ currentTab = null }) => {
     remoteStream,
     isMicMuted,
     isCamOff,
+    isSpeakerMuted,
     callDuration,
     callError,
     partner,
@@ -40,6 +41,7 @@ export const CallModal = ({ currentTab = null }) => {
     endCall,
     toggleMic,
     toggleCam,
+    toggleSpeaker,
     switchCam,
     dismissCallError,
     isScreenSharing,
@@ -183,6 +185,7 @@ export const CallModal = ({ currentTab = null }) => {
 
           {/* Controls Bar */}
           <div className="absolute inset-x-0 bottom-0 p-1.5 bg-gradient-to-t from-black/95 via-black/70 to-transparent flex items-center justify-around z-20">
+            {/* Mic Toggle */}
             <button
               onClick={toggleMic}
               className={`p-1.5 rounded-full text-white transition ${
@@ -193,17 +196,27 @@ export const CallModal = ({ currentTab = null }) => {
               {isMicMuted ? <MicOff className="w-3.5 h-3.5" /> : <Mic className="w-3.5 h-3.5" />}
             </button>
 
-            {isVideoCall && (
-              <button
-                onClick={toggleCam}
-                className={`p-1.5 rounded-full text-white transition ${
-                  isCamOff ? 'bg-amber-500' : 'bg-white/20 hover:bg-white/30'
-                }`}
-                title={isCamOff ? 'Cam On' : 'Cam Off'}
-              >
-                {isCamOff ? <VideoOff className="w-3.5 h-3.5" /> : <Video className="w-3.5 h-3.5" />}
-              </button>
-            )}
+            {/* Cam Toggle */}
+            <button
+              onClick={toggleCam}
+              className={`p-1.5 rounded-full text-white transition ${
+                isCamOff ? 'bg-amber-500' : 'bg-white/20 hover:bg-white/30'
+              }`}
+              title={isCamOff ? 'Turn Cam On' : 'Turn Cam Off'}
+            >
+              {isCamOff ? <VideoOff className="w-3.5 h-3.5" /> : <Video className="w-3.5 h-3.5" />}
+            </button>
+
+            {/* Speaker / Partner Audio Toggle */}
+            <button
+              onClick={toggleSpeaker}
+              className={`p-1.5 rounded-full text-white transition ${
+                isSpeakerMuted ? 'bg-amber-500' : 'bg-white/20 hover:bg-white/30'
+              }`}
+              title={isSpeakerMuted ? 'Unmute Partner Sound' : 'Mute Partner Sound'}
+            >
+              {isSpeakerMuted ? <VolumeX className="w-3.5 h-3.5" /> : <Volume2 className="w-3.5 h-3.5" />}
+            </button>
 
             <button
               onClick={maximizeCall}
@@ -418,7 +431,7 @@ export const CallModal = ({ currentTab = null }) => {
           </div>
 
           {/* Bottom Floating Control Bar */}
-          <div className="absolute bottom-6 inset-x-0 mx-auto max-w-md flex items-center justify-center gap-3 sm:gap-4 bg-black/60 backdrop-blur-xl py-3 px-5 rounded-full border border-white/15 z-30 shadow-2xl">
+          <div className="absolute bottom-6 inset-x-0 mx-auto max-w-md flex items-center justify-center gap-2 sm:gap-3 bg-black/60 backdrop-blur-xl py-3 px-4 sm:px-5 rounded-full border border-white/15 z-30 shadow-2xl">
             {/* Mute Mic */}
             <button
               onClick={toggleMic}
@@ -432,30 +445,41 @@ export const CallModal = ({ currentTab = null }) => {
               {isMicMuted ? <MicOff className="w-5 h-5" /> : <Mic className="w-5 h-5" />}
             </button>
 
-            {/* Toggle Camera (Video Calls) */}
-            {isVideoCall && (
-              <>
-                <button
-                  onClick={toggleCam}
-                  className={`p-3 rounded-full transition ${
-                    isCamOff
-                      ? 'bg-amber-500 text-white'
-                      : 'bg-white/15 hover:bg-white/25 text-white'
-                  }`}
-                  title={isCamOff ? 'Turn on camera' : 'Turn off camera'}
-                >
-                  {isCamOff ? <VideoOff className="w-5 h-5" /> : <Video className="w-5 h-5" />}
-                </button>
+            {/* Toggle Camera (Turn Video On/Off) */}
+            <button
+              onClick={toggleCam}
+              className={`p-3 rounded-full transition ${
+                isCamOff
+                  ? 'bg-amber-500 text-white'
+                  : 'bg-white/15 hover:bg-white/25 text-white'
+              }`}
+              title={isCamOff ? 'Turn on camera' : 'Turn off camera'}
+            >
+              {isCamOff ? <VideoOff className="w-5 h-5" /> : <Video className="w-5 h-5" />}
+            </button>
 
-                {/* Flip camera between front & rear on mobile */}
-                <button
-                  onClick={switchCam}
-                  className="p-3 rounded-full bg-white/15 hover:bg-white/25 text-white transition"
-                  title="Switch camera"
-                >
-                  <SwitchCamera className="w-5 h-5" />
-                </button>
-              </>
+            {/* Mute / Unmute Partner Speaker Audio */}
+            <button
+              onClick={toggleSpeaker}
+              className={`p-3 rounded-full transition ${
+                isSpeakerMuted
+                  ? 'bg-amber-500 text-white'
+                  : 'bg-white/15 hover:bg-white/25 text-white'
+              }`}
+              title={isSpeakerMuted ? 'Unmute partner audio' : 'Mute partner audio'}
+            >
+              {isSpeakerMuted ? <VolumeX className="w-5 h-5" /> : <Volume2 className="w-5 h-5" />}
+            </button>
+
+            {/* Flip camera between front & rear on mobile */}
+            {(!isCamOff || isVideoCall) && (
+              <button
+                onClick={switchCam}
+                className="p-3 rounded-full bg-white/15 hover:bg-white/25 text-white transition"
+                title="Switch camera (front/rear)"
+              >
+                <SwitchCamera className="w-5 h-5" />
+              </button>
             )}
 
             {/* Stream Screen / Local Movie Window */}
