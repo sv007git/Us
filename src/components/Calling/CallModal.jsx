@@ -19,7 +19,7 @@ import {
 import { useCall } from '../../context/CallContext'
 import { useTheme } from '../../context/ThemeContext'
 
-export const CallModal = () => {
+export const CallModal = ({ currentTab = null }) => {
   const { currentTheme } = useTheme()
   const {
     callState,
@@ -51,27 +51,37 @@ export const CallModal = () => {
   const remoteVideoRef = useRef(null)
   const remoteAudioRef = useRef(null)
 
-  // Attach local stream to video element
+  // Attach local stream to video element (MUTED to prevent local echo)
   useEffect(() => {
     if (localVideoRef.current && localStream) {
-      localVideoRef.current.srcObject = localStream
+      if (localVideoRef.current.srcObject !== localStream) {
+        localVideoRef.current.srcObject = localStream
+      }
+      localVideoRef.current.muted = true
+      localVideoRef.current.play().catch(() => {})
     }
-  }, [localStream, callState])
+  }, [localStream, callState, isVideoCall])
 
-  // Attach remote stream to video element
+  // Attach remote stream to video element (UNMUTED so partner voice is clear)
   useEffect(() => {
     if (remoteVideoRef.current && remoteStream) {
-      remoteVideoRef.current.srcObject = remoteStream
+      if (remoteVideoRef.current.srcObject !== remoteStream) {
+        remoteVideoRef.current.srcObject = remoteStream
+      }
+      remoteVideoRef.current.muted = false
+      remoteVideoRef.current.volume = 1.0
       remoteVideoRef.current.play().catch(() => {})
     }
-  }, [remoteStream, callState])
+  }, [remoteStream, callState, isVideoCall])
 
   // Dedicated remote audio element to ensure audio is always crystal clear in both audio and video calls
   useEffect(() => {
     const audioEl = remoteAudioRef.current
     if (audioEl && remoteStream) {
       try {
-        audioEl.srcObject = remoteStream
+        if (audioEl.srcObject !== remoteStream) {
+          audioEl.srcObject = remoteStream
+        }
         audioEl.muted = false
         audioEl.volume = 1.0
 
@@ -113,8 +123,13 @@ export const CallModal = () => {
     return `${mins < 10 ? '0' : ''}${mins}:${secs < 10 ? '0' : ''}${secs}`
   }
 
-  // Floating Picture-in-Picture mode for Watch Together / browsing
+  // Floating Picture-in-Picture mode for browsing app tabs
+  // When watching a movie in Watch tab, WatchRoom renders the integrated in-movie video dock
   if (isCallMinimized && (callState === 'connected' || callState === 'connecting')) {
+    if (currentTab === 'watch') {
+      return null
+    }
+
     return (
       <div className={`fixed bottom-20 right-3 sm:right-6 z-50 w-44 sm:w-56 aspect-[3/4] sm:aspect-video rounded-3xl overflow-hidden shadow-2xl border-2 ${currentTheme.border} bg-slate-950/95 backdrop-blur-md animate-scale-up group`}>
         <audio ref={remoteAudioRef} autoPlay playsInline className="sr-only" aria-hidden="true" />
@@ -125,7 +140,6 @@ export const CallModal = () => {
               ref={remoteVideoRef}
               autoPlay
               playsInline
-              muted
               className="w-full h-full object-cover"
             />
           ) : (
@@ -337,7 +351,6 @@ export const CallModal = () => {
                 ref={remoteVideoRef}
                 autoPlay
                 playsInline
-                muted
                 className="w-full h-full object-cover rounded-3xl"
               />
             ) : (

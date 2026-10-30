@@ -241,7 +241,7 @@ const AppContent = () => {
           <ChatView currentTab={currentTab} onNavigate={setCurrentTab} onShowToast={handleShowToast} />
         </div>
         <div className={`h-full w-full flex-col ${currentTab === 'watch' ? 'flex overflow-y-auto' : 'hidden'}`}>
-          <WatchRoom />
+          <WatchRoom currentTab={currentTab} />
         </div>
         <div className={`h-full w-full flex-col ${currentTab === 'memories' ? 'flex overflow-y-auto' : 'hidden'}`}>
           <MemoriesView currentTab={currentTab} onNavigate={setCurrentTab} onShowToast={handleShowToast} />
@@ -258,7 +258,7 @@ const AppContent = () => {
       <BottomNav currentTab={currentTab} setCurrentTab={setCurrentTab} />
 
       {/* WebRTC Video & Voice Call Overlay */}
-      <CallModal />
+      <CallModal currentTab={currentTab} />
     </div>
   )
 }

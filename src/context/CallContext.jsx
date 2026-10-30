@@ -33,7 +33,9 @@ export const CallProvider = ({ children }) => {
     const audioEl = globalAudioRef.current
     if (audioEl && remoteStream) {
       try {
-        audioEl.srcObject = remoteStream
+        if (audioEl.srcObject !== remoteStream) {
+          audioEl.srcObject = remoteStream
+        }
         audioEl.muted = false
         audioEl.volume = 1.0
 
@@ -161,6 +163,11 @@ export const CallProvider = ({ children }) => {
     setIsCamOff(false)
     setFacingMode('user')
 
+    // Prime audio playback during user gesture
+    if (globalAudioRef.current) {
+      globalAudioRef.current.play().catch(() => {})
+    }
+
     try {
       await managerRef.current.startCall({
         isVideo,
@@ -177,6 +184,11 @@ export const CallProvider = ({ children }) => {
     if (!managerRef.current || !incomingCallData) return
     stopCallAudio()
     setCallError(null)
+
+    // Prime audio playback during user gesture
+    if (globalAudioRef.current) {
+      globalAudioRef.current.play().catch(() => {})
+    }
 
     try {
       await managerRef.current.answerCall(incomingCallData)

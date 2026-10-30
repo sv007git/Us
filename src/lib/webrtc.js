@@ -226,7 +226,21 @@ export class WebRtcCallManager {
       })
       return this.localStream
     } catch (err) {
-      console.error('Media acquisition error:', err)
+      console.warn('Initial media acquisition error, attempting basic fallback:', err)
+      // Fallback: If device doesn't support ideal constraints or advanced audio flags, retry with basic
+      try {
+        this.localStream = await navigator.mediaDevices.getUserMedia({
+          audio: true,
+          video: isVideo ? true : false,
+        })
+        this.localStream.getAudioTracks().forEach((track) => {
+          track.enabled = true
+        })
+        return this.localStream
+      } catch (fallbackErr) {
+        console.error('Fallback media acquisition failed:', fallbackErr)
+      }
+
       if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
         throw new Error('Microphone or Camera access was denied. Please allow permissions in browser settings.')
       } else if (err.name === 'NotFoundError' || err.name === 'DevicesNotFoundError') {
@@ -257,21 +271,21 @@ export class WebRtcCallManager {
         }
       }
 
-      const notifyStream = () => {
+      if (this.remoteStream) {
+        this.remoteStream.getTracks().forEach((t) => {
+          t.enabled = true
+        })
+        this.onRemoteStream(this.remoteStream)
+      }
+
+      event.track.onunmute = () => {
         if (this.remoteStream) {
           this.remoteStream.getTracks().forEach((t) => {
             t.enabled = true
           })
-          // Create fresh MediaStream reference so React state updates and triggers re-render
-          this.onRemoteStream(new MediaStream(this.remoteStream.getTracks()))
+          this.onRemoteStream(this.remoteStream)
         }
       }
-
-      event.track.onunmute = () => {
-        notifyStream()
-      }
-
-      notifyStream()
     }
 
     // ICE candidate generation
